@@ -1,0 +1,23 @@
+/* Flashcards pages. Builds on style.css (blue desktop, XP window). */
+.gate-window { width: 260px; }
+
+#gateInput { width: 100%; box-sizing: border-box; }
+#gateInput.wrong { border-color: #c00; } /* wrong word: red border, no text */
+
+/* Study page (pickers + batch summary) */
+.study-window { width: 380px; max-width: 94vw; } /* max-width keeps it inside small phones */
+.study-window label { display: block; margin-top: 10px; }
+.study-window input[type="file"] { width: 100%; box-sizing: border-box; margin-top: 4px; }
+.err { color: #c00; }
+.summary { list-style: none; padding: 0; margin: 8px 0 0; }
+.summary li { margin-bottom: 4px; word-break: break-word; }
+
+/* Study rounds: card + flip (two frames: squash, then swap text and restore) */
+.card { display: block; width: 100%; min-height: 110px; margin: 8px 0; padding: 10px; text-align: left;
+        white-space: pre-wrap; word-break: break-word; transition: transform 90ms linear; }
+.card.half { transform: scaleX(0.05); }
+.card small { display: block; margin-bottom: 6px; opacity: 0.7; }
+.verdict:not(.hidden) { display: flex; gap: 8px; } /* :not(.hidden) so the hidden class still wins */
+.verdict button, #startBtn { flex: 1; min-height: 44px; }
+#startBtn { width: 100%; margin-top: 10px; }
+@media (prefers-reduced-motion: reduce) { .card { transition: none; } }

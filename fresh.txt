@@ -1,0 +1,18 @@
+title: Spanish Week 3 (mock)
+audio: beep.wav
+
+Q: Hello
+A: Hola
+
+Q: Thank you
+A: Gracias
+
+Q: ¿Cómo estás?
+A: How are you?
+
+Q: Good night 🌙
+A: Buenas noches
+
+Q: Mañana
+A: Tomorrow
+Also: morning

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flashcards</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/flashcards.css" />
+</head>
+<body>
+
+  <div class="window study-window" id="welcomeWin">
+    <div class="title-bar"><span>📇 Flashcards</span></div>
+    <div class="window-body">
+      <strong>Welcome to your flashcards.</strong>
+
+      <label for="textPicker">Flashcards file (.txt):</label>
+      <input type="file" id="textPicker" accept=".txt,text/plain" />
+
+      <label for="audioPicker">Audio (optional):</label>
+      <input type="file" id="audioPicker" accept="audio/*" />
+
+      <p id="error" class="err" role="alert"></p>
+      <ul id="summary" class="summary"></ul>
+
+      <button type="button" id="startBtn" class="hidden">Start</button>
+
+      <div id="studyPanel" class="hidden">
+        <p id="progress"></p>
+        <div id="cardArea">
+          <button type="button" id="card" class="card">
+            <small id="cardLabel"></small>
+            <span id="cardText"></span>
+          </button>
+          <div id="verdict" class="verdict hidden">
+            <button type="button" id="missedBtn">Missed it</button>
+            <button type="button" id="knewBtn">Knew it</button>
+          </div>
+        </div>
+        <p id="doneMsg" class="hidden"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load order matters: parser + session (logic) before study (UI) -->
+  <script src="/js/flashcards-parser.js"></script>
+  <script src="/js/flashcards-session.js"></script>
+  <script src="/js/flashcards-study.js"></script>
+</body>
+</html>

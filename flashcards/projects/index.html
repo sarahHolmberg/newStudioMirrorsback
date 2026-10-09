@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flashcards</title>
+  <!-- Root-absolute paths: this page lives two folders deep -->
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/flashcards.css" />
+</head>
+<body>
+
+  <!-- Blank page: just a dialog box with one input, no visible text -->
+  <div class="window gate-window">
+    <div class="title-bar"></div>
+    <div class="window-body">
+      <form id="gateForm" autocomplete="off">
+        <input type="text" id="gateInput" aria-label="Access word" autofocus />
+      </form>
+    </div>
+  </div>
+
+  <!-- Load order matters: access (logic) first, then gate (UI) -->
+  <script src="/js/flashcards-access.js"></script>
+  <script src="/js/flashcards-gate.js"></script>
+</body>
+</html>
