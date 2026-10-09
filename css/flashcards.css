@@ -18,6 +18,7 @@
 .card.half { transform: scaleX(0.05); }
 .card small { display: block; margin-bottom: 6px; opacity: 0.7; }
 .verdict:not(.hidden) { display: flex; gap: 8px; } /* :not(.hidden) so the hidden class still wins */
-.verdict button, #startBtn { flex: 1; min-height: 44px; }
-#startBtn { width: 100%; margin-top: 10px; }
+.verdict button, #startBtn, #saveBtn, #playBtn { flex: 1; min-height: 44px; }
+#startBtn, #saveBtn { width: 100%; margin-top: 10px; }
+#playBtn { width: 100%; }
 @media (prefers-reduced-motion: reduce) { .card { transition: none; } }

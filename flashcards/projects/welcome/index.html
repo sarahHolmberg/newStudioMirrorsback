@@ -25,9 +25,12 @@
 
       <button type="button" id="startBtn" class="hidden">Start</button>
 
+      <audio id="player" preload="auto"></audio>
+
       <div id="studyPanel" class="hidden">
         <p id="progress"></p>
         <div id="cardArea">
+          <button type="button" id="playBtn" class="hidden">▶ Play audio</button>
           <button type="button" id="card" class="card">
             <small id="cardLabel"></small>
             <span id="cardText"></span>
@@ -38,13 +41,15 @@
           </div>
         </div>
         <p id="doneMsg" class="hidden"></p>
+        <button type="button" id="saveBtn" class="hidden">Save updated file</button>
       </div>
     </div>
   </div>
 
-  <!-- Load order matters: parser + session (logic) before study (UI) -->
+  <!-- Load order matters: parser + session + cooldown (logic) before study (UI) -->
   <script src="/js/flashcards-parser.js"></script>
   <script src="/js/flashcards-session.js"></script>
+  <script src="/js/flashcards-cooldown.js"></script>
   <script src="/js/flashcards-study.js"></script>
 </body>
 </html>
