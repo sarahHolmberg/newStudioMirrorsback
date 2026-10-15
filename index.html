@@ -6,33 +6,59 @@
   <title>Video Vault - Retro Edition</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
-<body>
+<body class="vault">
 
-  <div class="window">
-    <div class="title-bar">
-      <span>📼 Video Vault</span>
-      <div class="title-buttons">
-        <span>_</span><span>□</span><span>✕</span>
+  <main class="layout">
+
+    <!-- LINKS WINDOW -->
+    <div class="window">
+      <div class="title-bar">
+        <span>📼 Video Vault</span>
+        <div class="title-buttons">
+          <span>_</span><span>□</span><span>✕</span>
+        </div>
+      </div>
+      <div class="window-body">
+        <label for="linkInput">Paste Instagram link:</label>
+        <div class="input-row">
+          <input type="text" id="linkInput" placeholder="https://www.instagram.com/..." inputmode="url" />
+          <button id="addBtn">Add Video</button>
+        </div>
+        <p id="msg" role="status"></p>
+
+        <button id="viewBtn">View Videos</button>
+
+        <div id="videoListContainer" class="hidden">
+          <p><strong>Stored Videos:</strong></p>
+          <ul id="videoList"></ul>
+          <button id="moreBtn" class="hidden">Load more</button>
+        </div>
       </div>
     </div>
-    <div class="window-body">
-      <label for="linkInput">Paste video link:</label>
-      <div class="input-row">
-        <input type="text" id="linkInput" placeholder="https://..." />
-        <button id="addBtn">Add Video</button>
-      </div>
 
-      <button id="viewBtn">View Videos</button>
-
-      <div id="videoListContainer" class="hidden">
-        <p><strong>Stored Videos:</strong></p>
-        <ul id="videoList"></ul>
+    <!-- TUTORIALS (sticky on the side on desktop, below on phones) -->
+    <aside class="window tutorials">
+      <div class="title-bar"><span>🎓 Tutorials</span></div>
+      <div class="window-body">
+        <!-- CHANGE HERE: the YouTube links are in data-url; the text under each video is plain HTML -->
+        <p><strong>1. Trim your video to 4 eight counts</strong></p>
+        <div class="yt" data-url="https://www.youtube.com/watch?v=5zX7mOYjooM"></div>
+        <p>Trim your video so it is exactly <strong>4 eight counts</strong> long:</p>
+        <ol>
+          <li>Find the <strong>first eight count</strong> you can establish in the video. Your trimmed video starts there.</li>
+          <li>So, 1 eight count, 2 eight counts, 3 eight counts and 4 eight counts, one after the other.</li>
+          
+        <p><strong>2. How to trim a video on Windows 11</strong></p>
+        <div class="yt" data-url="https://www.youtube.com/watch?v=apJBP_jrLjE"></div>
+        <p>This video shows how to trim a video using only what is already built into Windows 11. You do not need to install any third-party software.</p>
       </div>
-    </div>
-  </div>
+    </aside>
+
+  </main>
 
   <!-- Load order matters: db.js defines the data layer, app.js uses it -->
   <script src="js/db.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/tutorials.js" defer></script>
 </body>
 </html>
