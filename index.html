@@ -19,6 +19,9 @@
         </div>
       </div>
       <div class="window-body">
+        <label for="nameInput">Name (who the video is about):</label>
+        <input type="text" id="nameInput" maxlength="100" placeholder="e.g. Sarah" autocomplete="off" />
+
         <label for="linkInput">Paste Instagram link:</label>
         <div class="input-row">
           <input type="text" id="linkInput" placeholder="https://www.instagram.com/..." inputmode="url" />
@@ -26,7 +29,10 @@
         </div>
         <p id="msg" role="status"></p>
 
-        <button id="viewBtn">View Videos</button>
+        <div class="btn-row">
+          <button id="viewBtn">View Videos</button>
+          <button id="scissorsBtn" title="Mark clipped videos" aria-label="Scissors: mark clipped videos">✂</button>
+        </div>
 
         <div id="videoListContainer" class="hidden">
           <p><strong>Stored Videos:</strong></p>
@@ -46,8 +52,10 @@
         <p>Trim your video so it is exactly <strong>4 eight counts</strong> long:</p>
         <ol>
           <li>Find the <strong>first eight count</strong> you can establish in the video. Your trimmed video starts there.</li>
-          <li>So, 1 eight count, 2 eight counts, 3 eight counts and 4 eight counts, one after the other.</li>
-          
+          <li>Keep 1 eight count, 2 eight counts, 3 eight counts and 4 eight counts, one after the other.</li>
+          <li>Cut everything before the first eight count and everything after the fourth eight count.</li>
+        </ol>
+
         <p><strong>2. How to trim a video on Windows 11</strong></p>
         <div class="yt" data-url="https://www.youtube.com/watch?v=apJBP_jrLjE"></div>
         <p>This video shows how to trim a video using only what is already built into Windows 11. You do not need to install any third-party software.</p>
@@ -55,6 +63,17 @@
     </aside>
 
   </main>
+
+  <!-- Code dialog for removing clipped links (the code is checked on the server) -->
+  <dialog id="codeDialog">
+    <form id="codeForm">
+      <p><strong>Enter the code to remove the ticked videos:</strong></p>
+      <input type="password" id="codeInput" autocomplete="off" aria-label="Code" />
+      <p id="codeMsg" class="err" role="alert"></p>
+      <button type="submit">Remove</button>
+      <button type="button" id="codeCancel">Cancel</button>
+    </form>
+  </dialog>
 
   <!-- Load order matters: db.js defines the data layer, app.js uses it -->
   <script src="js/db.js"></script>

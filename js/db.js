@@ -45,16 +45,33 @@ const DB = (() => {
    * @param {string} link
    * @returns {Promise<{added: boolean}>} added=false means it was already saved
    */
-  async function addVideo(link) {
-    console.log('[DB WRITE] Request to save video:', link);
+  async function addVideo(link, name) {
+    console.log('[DB WRITE] Request to save video:', link, '| name:', name || '(none)');
     const data = await call(ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ link }),
+      body: JSON.stringify({ link, name }),
     });
     console.log('[DB WRITE] Done. Added:', data.added);
     return data;
   }
 
-  return { getVideos, addVideo };
+  /**
+   * Remove clipped links. The SERVER checks the code; a wrong code throws "Wrong code."
+   * @param {number[]} ids
+   * @param {string} code
+   * @returns {Promise<{deleted: number}>}
+   */
+  async function removeVideos(ids, code) {
+    console.log('[DB DELETE] Request to remove', ids.length, 'links (code not logged).');
+    const data = await call(ENDPOINT, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids, code }),
+    });
+    console.log('[DB DELETE] Done. Removed:', data.deleted);
+    return data;
+  }
+
+  return { getVideos, addVideo, removeVideos };
 })();
