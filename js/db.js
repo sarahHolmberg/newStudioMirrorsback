@@ -43,14 +43,16 @@ const DB = (() => {
   /**
    * Save a new link.
    * @param {string} link
+   * @param {string} [name]
+   * @param {string} image JPEG as base64 text (the server requires it)
    * @returns {Promise<{added: boolean}>} added=false means it was already saved
    */
-  async function addVideo(link, name) {
-    console.log('[DB WRITE] Request to save video:', link, '| name:', name || '(none)');
+  async function addVideo(link, name, image) {
+    console.log('[DB WRITE] Request to save video:', link, '| name:', name || '(none)', '| picture chars:', image ? image.length : 0);
     const data = await call(ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ link, name }),
+      body: JSON.stringify({ link, name, image }),
     });
     console.log('[DB WRITE] Done. Added:', data.added);
     return data;
@@ -73,5 +75,8 @@ const DB = (() => {
     return data;
   }
 
-  return { getVideos, addVideo, removeVideos };
+  /** @returns {string} address of one link's picture (used by the download icon) */
+  const imageUrl = (id) => `${ENDPOINT}?image=${id}`;
+
+  return { getVideos, addVideo, removeVideos, imageUrl };
 })();
