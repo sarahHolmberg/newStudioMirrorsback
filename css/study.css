@@ -52,3 +52,6 @@ body.study-page { height: auto; min-height: 100vh; align-items: flex-start; padd
 .lock { text-align: center; padding: 16px 0; }
 .lock .big { font-size: 40px; }
 @media (prefers-reduced-motion: reduce) { .card, .bar div { transition: none; } }
+.boxes { width: 100%; border-collapse: collapse; background: #fff; border: 2px inset #999; font-variant-numeric: tabular-nums; }
+.boxes th, .boxes td { padding: 4px 8px; text-align: left; border-bottom: 1px solid #ddd; }
+.boxes td:last-child, .boxes th:last-child { text-align: right; }

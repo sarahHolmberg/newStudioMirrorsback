@@ -1,17 +1,18 @@
 /**
  * study.js
  * The /study page: a roadmap of info and quiz steps, plus a flashcard deck.
- * Content comes from STUDY_DATA (study-data.js); the flashcard lock time from Cooldown.
+ * Content comes from STUDY_DATA (study-data.js); flashcard scheduling from SRS (study-srs.js).
  *
  * Roadmap: steps unlock one by one. An info step is done when you press
  * "I've read this"; a quiz step is done when you score at least passScore.
- * Flashcards: round 1 is every card; each next round is only the cards you
- * missed, until you get them all. Then the deck locks for Cooldown.MINUTES.
+ * Flashcards: spaced repetition. Only the cards that are due come up. Round 1
+ * is every due card; each next round is only the ones you missed, until you
+ * get them all. Then each card waits longer or shorter depending on how it went.
  * Progress is kept in this browser (localStorage).
  */
 (() => {
   const PROGRESS_KEY = 'study-progress-v2'; // { done: [stepIndex, ...] }; bump when the steps change
-  const FLASH_KEY = 'study-flashcards';     // { lastCompleted: ISO date }
+  const FLASH_KEY = 'study-srs';            // { [card front]: { box, due } }
 
   const view = document.getElementById('view');
   const windowTitle = document.getElementById('windowTitle');
@@ -94,7 +95,7 @@
       STUDY_DATA.skipped && STUDY_DATA.skipped.length
         ? el('p', { className: 'muted', textContent: `Left out (you know these): ${STUDY_DATA.skipped.join(', ')}` })
         : '',
-      el('button', { className: 'flash-btn', textContent: `🃏 Flashcards (${STUDY_DATA.flashcards.length} cards)`, onclick: renderFlashcards }),
+      el('button', { className: 'flash-btn', textContent: flashLabel(), onclick: renderFlashcards }),
       road,
       el('div', { className: 'nav-row' }, resetBtn));
   }
@@ -179,15 +180,23 @@
     question();
   }
 
-  // ---------- flashcards ----------
+  // ---------- flashcards (spaced repetition) ----------
+  const cards = STUDY_DATA.flashcards;
+
+  function flashLabel() {
+    const due = SRS.dueCards(cards, load(FLASH_KEY, {})).length;
+    return due ? `🃏 Flashcards · ${due} due` : '🃏 Flashcards · all caught up';
+  }
+
   function renderFlashcards() {
-    const flash = load(FLASH_KEY, {});
-    const lockLeft = Cooldown.remainingMs(flash.lastCompleted);
-    if (lockLeft > 0) return renderLocked(lockLeft);
+    let states = load(FLASH_KEY, {});
+    const due = SRS.dueCards(cards, states);
+    if (!due.length) return renderCaughtUp(states);
 
     let round = 1;
-    let queue = shuffle(STUDY_DATA.flashcards);
+    let queue = shuffle(due);
     let missed = [];
+    const lapsed = new Set(); // cards missed at least once this session
     let pos = 0;
 
     function card() {
@@ -216,7 +225,7 @@
       paint();
 
       show('🃏 Flashcards',
-        el('h2', { textContent: round === 1 ? 'Round 1: every card' : `Round ${round}: only the ones you missed` }),
+        el('h2', { textContent: round === 1 ? `Round 1: ${queue.length} card${queue.length > 1 ? 's' : ''} due` : `Round ${round}: only the ones you missed` }),
         el('p', { className: 'muted', textContent: `Card ${pos + 1} of ${queue.length} · ${missed.length} missed this round` }),
         cardBtn,
         verdict,
@@ -224,7 +233,15 @@
     }
 
     function next(gotIt) {
-      if (!gotIt) missed.push(queue[pos]);
+      const c = queue[pos];
+      if (gotIt) {
+        // Schedule a card once it is right: later if it was right first time, tomorrow if missed before
+        states = SRS.grade(c, !lapsed.has(c), states);
+        save(FLASH_KEY, states);
+      } else {
+        lapsed.add(c);
+        missed.push(c);
+      }
       pos++;
       if (pos < queue.length) return card();
       if (missed.length) return roundOver();
@@ -245,25 +262,39 @@
     }
 
     function finished() {
-      save(FLASH_KEY, { lastCompleted: new Date().toISOString() });
+      const firstTry = due.length - lapsed.size;
       show('🃏 Flashcards',
         el('div', { className: 'lock' },
           el('div', { className: 'big', textContent: '🏆' }),
-          el('h2', { textContent: `All ${STUDY_DATA.flashcards.length} cards right!` }),
-          el('p', { textContent: `It took ${round} round${round > 1 ? 's' : ''}. The deck now rests for ${Cooldown.format(Cooldown.MINUTES * 60000)} so the next review is spaced out.` })),
+          el('h2', { textContent: `All ${due.length} due cards right!` }),
+          el('p', { textContent: `${firstTry} right on the first try moved up a box, so they wait longer next time. ${lapsed.size} you missed went back to box 1 and come back tomorrow.` })),
+        boxTable(states),
         el('div', { className: 'nav-row' }, backBtn()));
     }
 
     card();
   }
 
-  function renderLocked(ms) {
+  function renderCaughtUp(states) {
     show('🃏 Flashcards',
       el('div', { className: 'lock' },
         el('div', { className: 'big', textContent: '🔒' }),
-        el('h2', { textContent: 'Resting' }),
-        el('p', { textContent: `You finished the whole deck. It opens again in ${Cooldown.format(ms)}.` })),
+        el('h2', { textContent: 'All caught up' }),
+        el('p', { textContent: `No cards are due. The next one comes back in ${SRS.format(SRS.nextDueMs(cards, states))}.` })),
+      boxTable(states),
       el('div', { className: 'nav-row' }, backBtn()));
+  }
+
+  // How many cards sit in each box, and how long each box waits
+  function boxTable(states) {
+    const counts = SRS.boxCounts(cards, states);
+    const rows = SRS.INTERVAL_DAYS.map((days, box) => el('tr', {},
+      el('td', { textContent: box === 0 ? 'New' : `Box ${box}` }),
+      el('td', { textContent: box === 0 ? 'now' : `${days} day${days > 1 ? 's' : ''}` }),
+      el('td', { textContent: String(counts[box]) })));
+    return el('table', { className: 'boxes' },
+      el('thead', {}, el('tr', {}, el('th', { textContent: 'Box' }), el('th', { textContent: 'Comes back after' }), el('th', { textContent: 'Cards' }))),
+      el('tbody', {}, ...rows));
   }
 
   renderRoadmap();
