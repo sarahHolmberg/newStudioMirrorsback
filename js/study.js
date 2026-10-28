@@ -74,8 +74,13 @@
       road.append(li);
     });
 
+    // Two clicks to reset: the first only asks
     const resetBtn = el('button', { textContent: 'Reset progress', onclick: () => {
-      if (!confirm('Start the roadmap over?')) return;
+      if (!resetBtn.dataset.armed) {
+        resetBtn.dataset.armed = '1';
+        resetBtn.textContent = 'Click again to start over';
+        return;
+      }
       progress = { done: [] };
       save(PROGRESS_KEY, progress);
       renderRoadmap();

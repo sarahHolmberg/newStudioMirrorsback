@@ -1,5 +1,6 @@
 /* Study page (/study). Builds on style.css (blue desktop, XP window). */
-body.study-page { height: auto; min-height: 100vh; align-items: flex-start; padding: 24px 16px; box-sizing: border-box; }
+body.study-page { height: auto; min-height: 100vh; align-items: flex-start; padding-block: 24px;
+                  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); box-sizing: border-box; }
 .study-main { width: 640px; max-width: 100%; }
 .study-main .window-body { font-size: 14px; line-height: 1.5; }
 .study-main h2 { font-size: 16px; margin: 0 0 4px; }
