@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Study</title>
+  <!-- Root-absolute paths: this page lives one folder deep -->
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/study.css" />
+</head>
+<body class="study-page">
+
+  <div class="window study-main">
+    <div class="title-bar">
+      <span id="windowTitle">🎓 Study</span>
+      <div class="title-buttons"><span>_</span><span>□</span><span>✕</span></div>
+    </div>
+    <!-- study.js renders the roadmap, a step, or the flashcards in here -->
+    <div class="window-body" id="view"></div>
+  </div>
+
+  <!-- Load order matters: content and lock logic first, then the UI -->
+  <script src="/js/study-data.js"></script>
+  <script src="/js/flashcards-cooldown.js"></script>
+  <script src="/js/study.js"></script>
+</body>
+</html>

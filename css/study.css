@@ -1,0 +1,53 @@
+/* Study page (/study). Builds on style.css (blue desktop, XP window). */
+body.study-page { height: auto; min-height: 100vh; align-items: flex-start; padding: 24px 16px; box-sizing: border-box; }
+.study-main { width: 640px; max-width: 100%; }
+.study-main .window-body { font-size: 14px; line-height: 1.5; }
+.study-main h2 { font-size: 16px; margin: 0 0 4px; }
+.study-main h3 { font-size: 14px; margin: 16px 0 4px; color: #0a246a; }
+.muted { opacity: 0.7; font-size: 12px; margin: 0 0 10px; }
+
+/* Roadmap */
+.bar { height: 14px; border: 2px inset #999; background: #fff; margin: 6px 0 12px; }
+.bar div { height: 100%; background: linear-gradient(to right, #2a8a2a, #5cc05c); width: 0; transition: width 300ms; }
+.flash-btn { width: 100%; min-height: 44px; font-weight: bold; margin-bottom: 12px; }
+.road { list-style: none; padding: 0; margin: 0; position: relative; }
+.road::before { content: ''; position: absolute; left: 17px; top: 8px; bottom: 8px; border-left: 3px dotted #7a8fb8; }
+.road li { position: relative; margin-bottom: 8px; }
+.road button { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 6px 8px 6px 0; min-height: 48px; background: transparent; border: none; }
+.road button:not(:disabled):hover .road-text { text-decoration: underline; }
+.road button:disabled { cursor: not-allowed; opacity: 0.5; }
+.dot { flex: none; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+       background: #ece9d8; border: 2px solid #0a246a; font-weight: bold; position: relative; z-index: 1; }
+.road li.done .dot { background: #2a8a2a; border-color: #1b5e1b; color: #fff; }
+.road li.next .dot { background: #f5c542; }
+.road-text small { display: block; opacity: 0.7; font-size: 11px; }
+.tag { font-size: 10px; padding: 0 5px; border: 1px solid #0a246a; border-radius: 3px; margin-left: 4px; vertical-align: middle; background: #fff; }
+.tag.quiz { background: #ffe9b0; }
+
+/* Info step */
+.study-main pre { background: #fff; border: 2px inset #999; padding: 8px; overflow-x: auto; font-size: 12px; white-space: pre; }
+.study-main code { background: #fff; padding: 0 3px; border: 1px solid #ccc; font-size: 12px; }
+.study-main pre code { border: none; padding: 0; }
+.study-main ul { padding-left: 20px; }
+.nav-row { display: flex; gap: 8px; margin-top: 16px; }
+.nav-row button { flex: 1; min-height: 44px; }
+
+/* Quiz step */
+.options { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+.options button { text-align: left; min-height: 40px; white-space: normal; }
+.options button:disabled { color: #000; cursor: default; }
+.options button.right { background: #c8f0c8; border-color: #2a8a2a; }
+.options button.wrong { background: #f6c6c6; border-color: #c00; }
+.feedback { padding: 8px; border: 2px inset #999; background: #fff; }
+.score { font-size: 28px; font-weight: bold; text-align: center; margin: 10px 0; }
+
+/* Flashcards */
+.card { display: block; width: 100%; min-height: 140px; margin: 8px 0; padding: 12px; text-align: left; font-size: 15px;
+        white-space: pre-wrap; word-break: break-word; transition: transform 90ms linear; }
+.card.half { transform: scaleX(0.05); }
+.card small { display: block; margin-bottom: 6px; opacity: 0.7; font-size: 11px; }
+.verdict { display: flex; gap: 8px; }
+.verdict button { flex: 1; min-height: 44px; }
+.lock { text-align: center; padding: 16px 0; }
+.lock .big { font-size: 40px; }
+@media (prefers-reduced-motion: reduce) { .card, .bar div { transition: none; } }
