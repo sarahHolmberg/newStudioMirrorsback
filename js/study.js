@@ -10,7 +10,7 @@
  * Progress is kept in this browser (localStorage).
  */
 (() => {
-  const PROGRESS_KEY = 'study-progress';   // { done: [stepIndex, ...] }
+  const PROGRESS_KEY = 'study-progress-v2'; // { done: [stepIndex, ...] }; bump when the steps change
   const FLASH_KEY = 'study-flashcards';     // { lastCompleted: ISO date }
 
   const view = document.getElementById('view');
@@ -91,6 +91,9 @@
         ? `All ${steps.length} steps done — you've covered the whole course!`
         : `${doneCount} of ${steps.length} steps done. Steps unlock one by one.` }),
       bar,
+      STUDY_DATA.skipped && STUDY_DATA.skipped.length
+        ? el('p', { className: 'muted', textContent: `Left out (you know these): ${STUDY_DATA.skipped.join(', ')}` })
+        : '',
       el('button', { className: 'flash-btn', textContent: `🃏 Flashcards (${STUDY_DATA.flashcards.length} cards)`, onclick: renderFlashcards }),
       road,
       el('div', { className: 'nav-row' }, resetBtn));
