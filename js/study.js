@@ -1,18 +1,30 @@
 /**
  * study.js
  * The /study page: a roadmap of info and quiz steps, plus a flashcard deck.
- * Content comes from STUDY_DATA (study-data.js); flashcard scheduling from SRS (study-srs.js).
+ * Content comes from STUDY_DATA: each study line has its own data file
+ * (study-data.js for HTML, study-battle-data.js for Battle). Flashcard scheduling from SRS (study-srs.js).
  *
  * Roadmap: steps unlock one by one. An info step is done when you press
  * "I've read this"; a quiz step is done when you score at least passScore.
  * Flashcards: spaced repetition. Only the cards that are due come up. Round 1
  * is every due card; each next round is only the ones you missed, until you
  * get them all. Then each card waits longer or shorter depending on how it went.
- * Progress is kept in this browser (localStorage).
+ * Audio: info steps with an mp3 get a player. It is a plain <audio> element
+ * with Media Session info, so it keeps playing with the phone screen locked.
+ * Progress is kept in this browser (localStorage), separately per study line.
  */
 (() => {
-  const PROGRESS_KEY = 'study-progress-v2'; // { done: [stepIndex, ...] }; bump when the steps change
-  const FLASH_KEY = 'study-srs';            // { [card front]: { box, due } }
+  // CHANGE HERE: the study lines shown as tabs on the roadmap
+  const LINES = [
+    { id: 'html', name: 'HTML', href: '/study/' },
+    { id: 'battle', name: 'Battle', href: '/study/battle/' }
+  ];
+
+  // The HTML line keeps its original key names so saved progress carries over
+  const prefix = !STUDY_DATA.id || STUDY_DATA.id === 'html' ? 'study' : `study-${STUDY_DATA.id}`;
+  const PROGRESS_KEY = `${prefix}-progress-v2`; // { done: [stepIndex, ...] }; bump when the steps change
+  const FLASH_KEY = `${prefix}-srs`;            // { [card front]: { box, due } }
+  const GOALS_KEY = `${prefix}-goals`;          // { [goal id]: count }
 
   const view = document.getElementById('view');
   const windowTitle = document.getElementById('windowTitle');
@@ -69,7 +81,8 @@
         el('span', { className: 'road-text' },
           el('small', { textContent: step.part }),
           step.title,
-          el('span', { className: `tag ${step.type}`, textContent: step.type === 'quiz' ? 'QUIZ' : 'INFO' })));
+          el('span', { className: `tag ${step.type}`, textContent: step.type.toUpperCase() }),
+          step.audio ? el('span', { className: 'tag', textContent: '🎧' }) : ''));
       if (!isOpen(i)) btn.title = 'Finish the step before to unlock';
       li.append(btn);
       road.append(li);
@@ -88,6 +101,7 @@
     } });
 
     show(`🎓 ${STUDY_DATA.title}`,
+      lineTabs(),
       el('p', { className: 'muted', textContent: doneCount === steps.length
         ? `All ${steps.length} steps done — you've covered the whole course!`
         : `${doneCount} of ${steps.length} steps done. Steps unlock one by one.` }),
@@ -96,12 +110,41 @@
         ? el('p', { className: 'muted', textContent: `Left out (you know these): ${STUDY_DATA.skipped.join(', ')}` })
         : '',
       el('button', { className: 'flash-btn', textContent: flashLabel(), onclick: renderFlashcards }),
+      STUDY_DATA.audioAll
+        ? el('div', { className: 'listen-all' }, el('strong', { textContent: '🎧 Listen to all lessons' }), player(STUDY_DATA.audioAll.src, STUDY_DATA.audioAll.title))
+        : '',
       road,
       el('div', { className: 'nav-row' }, resetBtn));
   }
 
+  function lineTabs() {
+    const current = STUDY_DATA.id || 'html';
+    return el('nav', { className: 'lines' }, ...LINES.map((line) => line.id === current
+      ? el('span', { className: 'line-tab active', textContent: line.name })
+      : el('a', { className: 'line-tab', href: line.href, textContent: line.name })));
+  }
+
   function openStep(i) {
-    if (steps[i].type === 'quiz') renderQuiz(i); else renderInfo(i);
+    const type = steps[i].type;
+    if (type === 'quiz') renderQuiz(i); else if (type === 'goals') renderGoals(i); else renderInfo(i);
+  }
+
+  // ---------- audio ----------
+  // A plain <audio> element: phones keep playing it with the screen locked.
+  // Media Session puts the title and play/pause on the lock screen.
+  function player(src, title) {
+    const audio = el('audio', { controls: true, preload: 'none', src });
+    audio.addEventListener('play', () => {
+      document.querySelectorAll('audio').forEach((a) => { if (a !== audio) a.pause(); });
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({ title, artist: STUDY_DATA.title });
+        navigator.mediaSession.setActionHandler('play', () => audio.play());
+        navigator.mediaSession.setActionHandler('pause', () => audio.pause());
+        navigator.mediaSession.setActionHandler('seekbackward', () => { audio.currentTime = Math.max(0, audio.currentTime - 10); });
+        navigator.mediaSession.setActionHandler('seekforward', () => { audio.currentTime += 10; });
+      }
+    });
+    return audio;
   }
 
   // ---------- info step ----------
@@ -119,8 +162,51 @@
     show(`📖 Step ${i + 1} of ${steps.length}`,
       el('h2', { textContent: step.title }),
       el('p', { className: 'muted', textContent: `${step.part} · Info` }),
+      step.audio ? el('div', { className: 'listen' }, el('strong', { textContent: '🎧 Listen to this lesson' }), player(step.audio, step.title)) : '',
       body,
       el('div', { className: 'nav-row' }, backBtn(), doneBtn));
+  }
+
+  // ---------- goals step ----------
+  function renderGoals(i) {
+    const step = steps[i];
+    const counts = load(GOALS_KEY, {});
+    const now = new Date();
+    const [month, day] = step.deadline.split('-').map(Number);
+    const deadline = new Date(now.getFullYear(), month - 1, day, 23, 59, 59);
+    const daysLeft = Math.max(0, Math.ceil((deadline - now) / 86400000));
+
+    const list = el('div', { className: 'goals' });
+    function paint() {
+      list.replaceChildren(...step.goals.map((g) => {
+        const n = counts[g.id] || 0;
+        const bar = el('div', { className: 'bar' }, el('div'));
+        bar.firstChild.style.width = `${Math.min(100, Math.round((n / g.target) * 100))}%`;
+        const change = (d) => {
+          counts[g.id] = Math.max(0, n + d);
+          save(GOALS_KEY, counts);
+          paint();
+        };
+        return el('div', { className: 'goal' },
+          el('div', { className: 'goal-head' },
+            el('span', { textContent: `${g.label}${n >= g.target ? ' ✓' : ''}` }),
+            el('span', { className: 'goal-count', textContent: `${n} / ${g.target}` })),
+          bar,
+          el('div', { className: 'verdict' },
+            el('button', { textContent: '− 1', ariaLabel: `Remove one from ${g.label}`, onclick: () => change(-1) }),
+            el('button', { textContent: '+ 1', ariaLabel: `Add one to ${g.label}`, onclick: () => change(1) })));
+      }));
+    }
+    paint();
+
+    show(`🎯 Step ${i + 1} of ${steps.length}`,
+      el('h2', { textContent: step.title }),
+      el('p', { className: 'muted', textContent: `${step.part} · ${daysLeft} day${daysLeft === 1 ? '' : 's'} left this year` }),
+      list,
+      el('div', { className: 'nav-row' }, backBtn(), el('button', { textContent: isDone(i) ? 'Back to roadmap ✓' : 'Got my goals ✓', onclick: () => {
+        markDone(i);
+        renderRoadmap();
+      } })));
   }
 
   // ---------- quiz step ----------

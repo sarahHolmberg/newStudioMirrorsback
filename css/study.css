@@ -22,7 +22,7 @@ body.study-page { height: auto; min-height: 100vh; align-items: flex-start; padd
 .road li.done .dot { background: #2a8a2a; border-color: #1b5e1b; color: #fff; }
 .road li.next .dot { background: #f5c542; }
 .road-text small { display: block; opacity: 0.7; font-size: 11px; }
-.tag { font-size: 10px; padding: 0 5px; border: 1px solid #0a246a; border-radius: 3px; margin-left: 4px; vertical-align: middle; background: #fff; }
+.tag { display: inline-block; white-space: nowrap; font-size: 10px; padding: 0 5px; border: 1px solid #0a246a; border-radius: 3px; margin-left: 4px; vertical-align: middle; background: #fff; }
 .tag.quiz { background: #ffe9b0; }
 
 /* Info step */
@@ -55,3 +55,15 @@ body.study-page { height: auto; min-height: 100vh; align-items: flex-start; padd
 .boxes { width: 100%; border-collapse: collapse; background: #fff; border: 2px inset #999; font-variant-numeric: tabular-nums; }
 .boxes th, .boxes td { padding: 4px 8px; text-align: left; border-bottom: 1px solid #ddd; }
 .boxes td:last-child, .boxes th:last-child { text-align: right; }
+
+/* Study lines (tabs), audio, goals */
+.lines { display: flex; gap: 6px; margin-bottom: 10px; }
+.line-tab { padding: 4px 12px; border: 2px outset #fff; background: #ece9d8; color: #000; text-decoration: none; }
+.line-tab.active { border-style: inset; background: #fff; font-weight: bold; }
+.listen, .listen-all { display: flex; flex-direction: column; gap: 6px; padding: 8px; margin: 8px 0 12px; border: 2px inset #999; background: #fff; }
+.listen audio, .listen-all audio { width: 100%; }
+.tag.goals { background: #d6ecff; }
+.goals { display: flex; flex-direction: column; gap: 16px; margin-top: 8px; }
+.goal-head { display: flex; justify-content: space-between; gap: 8px; font-weight: bold; }
+.goal-count { font-variant-numeric: tabular-nums; }
+.goal .bar { margin: 6px 0; }
