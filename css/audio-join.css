@@ -1,0 +1,47 @@
+/* Join & Split Audio page (/join-audio). Builds on style.css (blue desktop, XP window). */
+body.aj-page { height: auto; min-height: 100vh; align-items: flex-start; padding-block: 24px; box-sizing: border-box;
+               padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.aj-main { width: 560px; max-width: 100%; }
+.aj-main .window-body { font-size: 14px; line-height: 1.45; }
+.aj-intro { margin: 0 0 10px; }
+
+.aj-drop { border: 2px dashed #0a246a; background: #fff; padding: 22px 10px; text-align: center; cursor: pointer; border-radius: 4px; }
+.aj-drop.over, .aj-drop:hover { background: #dfe8f7; }
+.aj-drop:focus-visible { outline: 2px solid #0a246a; outline-offset: 2px; }
+
+.aj-listbox { border: 2px inset #999; background: #fff; margin-top: 10px; max-height: 45vh; overflow-y: auto; }
+.aj-files { list-style: none; margin: 0; padding: 4px; }
+.aj-files li { display: flex; align-items: center; gap: 4px; padding: 2px 0; border-bottom: 1px solid #eee; }
+.aj-files li:last-child { border-bottom: 0; }
+.aj-n { flex: none; width: 24px; text-align: right; opacity: 0.6; font-size: 12px; }
+.aj-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.aj-size { flex: none; font-size: 11px; opacity: 0.6; margin-right: 4px; }
+.aj-count { font-size: 12px; opacity: 0.7; margin: 4px 0 8px; min-height: 1em; }
+
+.aj-opts { display: flex; align-items: center; gap: 8px; }
+.aj-opts input { width: 70px; border: 2px inset #999; padding: 3px; font-size: 14px; }
+#goBtn { font-weight: bold; }
+button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.aj-bar { height: 14px; border: 2px inset #999; background: #fff; margin: 6px 0; }
+.aj-bar div { height: 100%; width: 0; background: linear-gradient(to right, #2a8a2a, #5cc05c); }
+#msg { min-height: 1em; margin: 6px 0; }
+.err { color: #c00; }
+.ok-msg { color: #2e7d32; }
+
+.aj-summary { margin: 8px 0; }
+.aj-parts { border: 2px inset #999; background: #fff; margin: 0; padding: 6px 6px 6px 30px; }
+.aj-parts li { padding: 4px 0; }
+.aj-parts audio { display: block; width: 100%; margin-top: 4px; }
+.aj-dl { color: #0a246a; font-weight: bold; overflow-wrap: anywhere; }
+.aj-meta { font-size: 12px; opacity: 0.7; margin: 0 8px; }
+.aj-btnlink { display: inline-flex; align-items: center; background: #ece9d8; border: 2px outset #fff; padding: 4px 10px;
+              color: #000; text-decoration: none; font-size: 13px; }
+.aj-btnlink:active { border-style: inset; }
+
+@media (max-width: 600px) {
+  .aj-main button, .aj-btnlink { min-height: 44px; }
+  .aj-files .ico { min-width: 36px; height: 36px; }
+  .aj-opts input { font-size: 16px; padding: 6px; } /* stops iOS zoom-on-focus */
+  .btn-row { flex-wrap: wrap; }
+}

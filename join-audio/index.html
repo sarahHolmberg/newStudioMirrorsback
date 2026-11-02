@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Join Audio</title>
+  <!-- Root-absolute paths: this page lives one folder deep -->
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/audio-join.css" />
+</head>
+<body class="aj-page">
+
+  <div class="window aj-main">
+    <div class="title-bar">
+      <span>🎵 Join &amp; Split Audio</span>
+      <div class="title-buttons"><span>_</span><span>□</span><span>✕</span></div>
+    </div>
+    <div class="window-body">
+      <p class="aj-intro">Add up to <b>30</b> MP3 or WAV files. They're joined in the order below, then cut into parts.
+        Everything runs on your device - nothing is uploaded or re-encoded.</p>
+
+      <div id="dropZone" class="aj-drop" tabindex="0" role="button" aria-label="Choose audio files">
+        <b>Drop audio files here</b><br />or tap to choose
+      </div>
+      <input id="fileInput" type="file" multiple accept=".mp3,.wav,audio/mpeg,audio/wav,audio/x-wav" class="hidden" />
+
+      <div class="aj-listbox hidden">
+        <ol id="fileList" class="aj-files"></ol>
+      </div>
+      <p id="fileCount" class="aj-count"></p>
+
+      <div class="aj-opts">
+        <label for="minutes">Part length (minutes)</label>
+        <input id="minutes" type="number" min="1" step="1" value="25" inputmode="numeric" />
+      </div>
+
+      <div class="btn-row">
+        <button id="goBtn" type="button" disabled>✂ Join &amp; split</button>
+        <button id="clearBtn" type="button" disabled>Clear</button>
+      </div>
+
+      <div id="progress" class="aj-bar hidden"><div id="progressBar"></div></div>
+      <p id="msg" role="status"></p>
+      <div id="results"></div>
+    </div>
+  </div>
+
+  <script src="/js/audio-join.js"></script>
+</body>
+</html>
