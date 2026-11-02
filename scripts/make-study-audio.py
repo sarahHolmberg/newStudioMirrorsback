@@ -1,7 +1,7 @@
 """
 make-study-audio.py
 Turns the `speech` text of every info step in a study data file into an mp3,
-plus one all.mp3 with every lesson after each other (for listening on the go).
+plus, if the data file has `audioAll`, one mp3 with every lesson after each other.
 
 Uses the free offline Kokoro voice (pip install kokoro-onnx soundfile) and ffmpeg.
 Model files: kokoro-v1.0.int8.onnx and voices-v1.0.bin from

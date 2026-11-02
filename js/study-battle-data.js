@@ -14,8 +14,6 @@ const STUDY_DATA = {
   title: 'Battle Roadmap',
   passScore: 0.8,
 
-  // One file with every lesson after each other, for listening on the go
-  audioAll: { src: '/audio/battle/all.mp3', title: 'Battle: all lessons' },
 
   steps: [
     {
