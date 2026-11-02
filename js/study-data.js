@@ -2,8 +2,10 @@
  * study-data.js
  * All the course content for /study: the roadmap steps and the flashcards.
  * Sources: the transcript of "Lär dig webbutveckling med Distansakademin & Linus Rudbeck",
- * HTML parts 1-5 (the transcript stops partway into the forms video), then steps 12-18
- * summarised from the sample of the textbook "Webbutveckling 1" (Lars Gunther, 2016).
+ * HTML parts 1-5 (the transcript stops partway into the forms video), then steps 12-19
+ * summarised from the sample of the textbook "Webbutveckling 1" (Lars Gunther, 2016),
+ * then steps 20-28 from a recording of Webbutveckling 1 lessons (CSS selectors, HTML
+ * tables, JavaScript and the DOM). Its Bootstrap and jQuery parts are in study-bootstrap-data.js.
  * Topics already mastered are listed in `skipped` and left out.
  *
  * CHANGE HERE: edit text, add questions or cards. Nothing else needs to change.
@@ -18,7 +20,7 @@ const STUDY_DATA = {
 
 
   // Shown on the roadmap so it is clear why these are missing.
-  skipped: ['Editor setup', 'VS Code shortcuts', 'Links & pages', 'Images'],
+  skipped: ['Editor setup', 'VS Code shortcuts', 'Links & pages', 'Images', 'HTML & CSS basics'],
 
   // A quiz is passed with at least this share of right answers.
   passScore: 0.8,
@@ -337,6 +339,182 @@ const STUDY_DATA = {
         { q: 'Why can a page with errors still look fine?', options: ['Browsers forgive many mistakes', 'Errors are fixed by CSS', 'UTF-8 hides them', 'It cannot'], answer: 0, why: 'Which is exactly why you validate.' },
         { q: 'Why put the web server in a virtual machine?', options: ['It is faster than a real server', 'It does not disturb your computer, is easy to remove and lets you switch servers', 'Browsers require it', 'It validates your code'], answer: 1, why: 'The book\'s three reasons.' }
       ]
+    },
+    {
+      type: 'info',
+      title: 'CSS selectors: tag, #id, .class, *',
+      part: 'Recording · CSS selectors',
+      audio: '/audio/html/11-selectors.mp3',
+      speech: "Lesson eleven. CSS selectors. A selector is how you choose what in the HTML to style. There are four kinds to know. One: a tag selector. You write the tag name without the angle brackets, for example body, or p. body with font family Verdana gives the whole page that font. p with font size twelve pixels changes every paragraph. Two: an id selector. It starts with a hash, for example hash hej. In the HTML you write id equals hej on the element. An id may only be used once on a page. Three: a class selector. It starts with a dot, for example dot showfloat. In the HTML you write class equals showfloat. A class can be used on as many elements as you like. If you are unsure, use a class. Where you put the class matters: on a p tag it colours the whole paragraph, on an a tag inside it only the link. Four: the universal selector, a star. It selects every element on the page. It is rarely used, but a border on star shows you where every element is.",
+      sections: [
+        { heading: 'A selector chooses what to style', html:
+          '<pre>selector {\n  property: value;\n}</pre>' },
+        { heading: '1. Tag selector: the tag name, no angle brackets', html:
+          '<pre>body { font-family: Verdana; }   /* the whole page */\np    { font-size: 12px; }        /* every paragraph */</pre>' },
+        { heading: '2. #id: once per page', html:
+          '<pre>#hej { background-color: pink; }</pre>' +
+          '<pre>&lt;h1 id="hej"&gt;CSS Selectors&lt;/h1&gt;</pre>' +
+          '<p>Starts with a <strong>hash #</strong>. An id may only be used <strong>once</strong> on a page.</p>' },
+        { heading: '3. .class: as many times as you like', html:
+          '<pre>.showfloat { background-color: yellow; }</pre>' +
+          '<pre>&lt;p class="showfloat"&gt;...&lt;/p&gt;\n&lt;p&gt;Read &lt;a class="showfloat" href="https://dn.se"&gt;the newspaper&lt;/a&gt;&lt;/p&gt;</pre>' +
+          '<p>Starts with a <strong>dot .</strong> and can be used on many elements. Where you put it matters: on the <code>p</code> the whole paragraph turns yellow; on the <code>a</code> only the link. Unsure? Use a class.</p>' },
+        { heading: '4. * universal: everything', html:
+          '<pre>* { border: 1px dotted red; }</pre>' +
+          '<p>Selects every element. Rarely used, but a border on <code>*</code> shows where every element is.</p>' }
+      ]
+    },
+    {
+      type: 'info',
+      title: 'More selectors: groups, nesting, :hover',
+      part: 'Recording · CSS selectors',
+      audio: '/audio/html/12-selectors-more.mp3',
+      speech: "Lesson twelve. More selectors. To give several tags the same style, list them with commas. body comma p, then the curly braces, gives both the body and the p tags font size fourteen pixels. To style a tag only when it sits inside another tag, write them with a space. p space a means: a tags that are inside a p tag. Links outside a paragraph are not affected. Pseudo classes describe a state. a colon hover is a link when the mouse is over it. a colon visited is a link you have already clicked. a colon active is a link while it is being clicked. A common pattern: text decoration none on a, to remove the underline, and text decoration underline on a colon hover, so the underline comes back under the mouse. For images, set only the width, for example two hundred pixels. The height then follows automatically. If you set both, the picture can get squashed. Use a class if only some images should change. And write comments in CSS between slash star and star slash. They help when you come back to the code later.",
+      sections: [
+        { heading: 'Grouping: a comma', html:
+          '<pre>body, p { font-size: 14px; }   /* both body AND p */</pre>' },
+        { heading: 'Nesting (descendant): a space', html:
+          '<pre>p a { background-color: purple; }   /* only links INSIDE a p */</pre>' +
+          '<p>A link outside a paragraph is not affected.</p>' },
+        { heading: 'Pseudo-classes: a state, with a colon', html:
+          '<pre>/* mouse-over effect */\na       { text-decoration: none; }        /* no underline */\na:hover { text-decoration: underline;     /* under the mouse */\n          color: red; }</pre>' +
+          '<ul><li><code>a:hover</code>: the mouse is over it.</li><li><code>a:visited</code>: already clicked.</li><li><code>a:active</code>: while being clicked.</li></ul>' },
+        { heading: 'Images: set only the width', html:
+          '<pre>.css-picture { width: 200px; }   /* height follows */</pre>' +
+          '<p>Set width <em>or</em> height. Both can squash the image. A class instead of <code>img</code> lets you choose which images change.</p>' },
+        { heading: 'Borders and comments', html:
+          '<pre>/* a comment: slash-star ... star-slash */\nh1 { border: 5px dotted pink; }  /* thickness  style  colour */</pre>' }
+      ]
+    },
+    {
+      type: 'quiz',
+      title: 'Quiz: CSS selectors',
+      part: 'Recording · CSS selectors',
+      questions: [
+        { q: 'How do you write a tag selector for all paragraphs?', options: ['<p> { }', 'p { }', '.p { }', '#p { }'], answer: 1, why: 'The tag name without angle brackets.' },
+        { q: 'Which selector matches id="hej"?', options: ['.hej', '#hej', 'hej', '*hej'], answer: 1, why: '# for id, . for class.' },
+        { q: 'How many times may an id be used on a page?', options: ['Once', 'Twice', 'As often as you like', 'Once per section'], answer: 0, why: 'Use a class for things that repeat.' },
+        { q: 'What does * { } select?', options: ['Nothing', 'Every element', 'Only the body', 'Only links'], answer: 1, why: 'The universal selector.' },
+        { q: 'What does "body, p { font-size: 14px; }" do?', options: ['Styles p inside body only', 'Gives both body and p the size 14px', 'Nothing, it is invalid', 'Styles only the first p'], answer: 1, why: 'A comma lists several selectors.' },
+        { q: 'What does "p a { }" select?', options: ['All p and all a', 'Links inside a paragraph', 'Paragraphs inside a link', 'The first link'], answer: 1, why: 'A space means inside.' },
+        { q: 'Which makes a link change when the mouse is over it?', options: ['a:visited', 'a:active', 'a:hover', 'a.over'], answer: 2, why: 'hover = mouse over; visited = clicked before; active = being clicked.' },
+        { q: 'How do you remove the underline from links?', options: ['text-decoration: none;', 'underline: off;', 'border: none;', 'font-style: none;'], answer: 0, why: 'text-decoration: none.' },
+        { q: 'You set width: 200px on an image. What about the height?', options: ['It stays the same', 'It follows automatically', 'It becomes 200px', 'The image disappears'], answer: 1, why: 'Set only one; setting both can squash it.' },
+        { q: 'How do you write a comment in CSS?', options: ['// comment', '<!-- comment -->', '/* comment */', '# comment'], answer: 2, why: 'Slash-star ... star-slash.' }
+      ]
+    },
+    {
+      type: 'info',
+      title: 'HTML tables: table, tr, td, th',
+      part: 'Recording · HTML tables',
+      audio: '/audio/html/13-tables.mp3',
+      speech: "Lesson thirteen. HTML tables. A table element on its own shows nothing. It needs rows and cells. tr is a table row. td is a cell, a column in that row, and it must sit between the tr tags. th is a table heading, a heading cell, shown in bold. Every row should have the same number of cells, or the table goes wrong. Indent the code so you can see where each row starts and ends. The borders do not show by default. Put border, for example two pixels solid black, on table, th and td together. Then add border collapse colon collapse on the table, so the double lines between cells merge into one. Padding is space inside the cell, so the text gets some air. Margin is space outside. A cell can span several columns with colspan equals two, and several rows with rowspan equals two. When a cell spans, remove the cells it covers. For every other row in a colour, make a class, for example radfarg, with a background colour, and put it on every other tr. A heading row can get a dark background like hash three three six six nine nine, and white text with color white. Last: tables are for showing data. Long ago people built page layouts with tables. Today we use divs and CSS for layout.",
+      sections: [
+        { heading: 'The parts', html:
+          '<pre>&lt;table&gt;\n  &lt;tr&gt;                      &lt;!-- table row --&gt;\n    &lt;th&gt;Name&lt;/th&gt;           &lt;!-- table heading (bold) --&gt;\n    &lt;th&gt;Job&lt;/th&gt;\n    &lt;th&gt;Age&lt;/th&gt;\n  &lt;/tr&gt;\n  &lt;tr class="radfarg"&gt;\n    &lt;td&gt;Frippe&lt;/td&gt;         &lt;!-- a cell (column) in the row --&gt;\n    &lt;td&gt;Teacher&lt;/td&gt;\n    &lt;td&gt;46&lt;/td&gt;\n  &lt;/tr&gt;\n&lt;/table&gt;</pre>' +
+          '<ul><li><code>&lt;table&gt;</code> alone shows nothing; it needs rows and cells.</li>' +
+          '<li><code>tr</code> = <strong>t</strong>able <strong>r</strong>ow. <code>td</code> = a cell, inside the tr. <code>th</code> = <strong>t</strong>able <strong>h</strong>eading.</li>' +
+          '<li>Every row needs the <strong>same number of cells</strong>.</li></ul>' },
+        { heading: 'The CSS', html:
+          '<pre>table, th, td {\n  border: 2px solid black;\n}\ntable {\n  border-collapse: collapse;   /* one line, not double */\n}\nth, td {\n  padding: 5px;                /* air INSIDE the cell */\n}\nth {\n  background-color: #336699;\n  color: white;                /* color = text colour */\n}\n.radfarg {\n  background-color: lightblue; /* put on every other tr */\n}</pre>' +
+          '<p><strong>Padding</strong> is inside the cell; <strong>margin</strong> is outside it.</p>' },
+        { heading: 'Spanning cells', html:
+          '<pre>&lt;td colspan="2"&gt;two columns wide&lt;/td&gt;\n&lt;td rowspan="2"&gt;two rows high&lt;/td&gt;</pre>' +
+          '<p>Remove the cells that the spanning cell now covers.</p>' },
+        { heading: 'Tables are for data', html:
+          '<p>Long ago page layouts were built with tables (or frames). Not any more: layout is done with divs and CSS. Use tables to show information in a structured way.</p>' }
+      ]
+    },
+    {
+      type: 'quiz',
+      title: 'Quiz: HTML tables',
+      part: 'Recording · HTML tables',
+      questions: [
+        { q: 'What does tr stand for?', options: ['Table row', 'Table reference', 'Text row', 'Top row'], answer: 0, why: 'A row; the cells go inside it.' },
+        { q: 'Which tag is a heading cell, shown in bold?', options: ['<td>', '<th>', '<thead>', '<h1>'], answer: 1, why: 'th = table heading.' },
+        { q: 'Where does a <td> go?', options: ['Directly in <table>', 'Inside a <tr>', 'Inside a <th>', 'In the head'], answer: 1, why: 'Cells sit inside rows.' },
+        { q: 'Your row has 3 cells, the next only 2. What happens?', options: ['Nothing', 'The table goes wrong; every row needs the same number', 'A third cell is added', 'The row is hidden'], answer: 1, why: 'Keep the same number per row, or use colspan.' },
+        { q: 'Which removes the double lines between cells?', options: ['border: none', 'border-collapse: collapse', 'padding: 0', 'border-spacing: double'], answer: 1, why: 'On the table element.' },
+        { q: 'Padding vs margin:', options: ['Padding is outside, margin inside', 'Padding is inside the cell, margin outside', 'They are the same', 'Margin is only for images'], answer: 1, why: 'Padding gives the text air inside.' },
+        { q: 'A cell should be two columns wide:', options: ['<td width="2">', '<td colspan="2">', '<td rowspan="2">', '<td span="2">'], answer: 1, why: 'colspan = across columns; rowspan = down rows.' },
+        { q: 'What should tables be used for today?', options: ['Page layout', 'Showing data in a structured way', 'Menus', 'Images'], answer: 1, why: 'Layout is done with divs and CSS.' }
+      ]
+    },
+    {
+      type: 'info',
+      title: 'JavaScript and the DOM: onclick, alert, innerHTML',
+      part: 'Recording · JavaScript & DOM',
+      audio: '/audio/html/14-js-dom.mp3',
+      speech: "Lesson fourteen. JavaScript and the DOM. The DOM, the document object model, is a tree, a hierarchy, that JavaScript uses to read an HTML page, even when the page changes. At the very top is the document. Under it are all the elements, which you can reach by their type, class or id. HTML is the structure, CSS is the look, and JavaScript is the interactive part. Most of JavaScript's work happens on the client, the user's computer, unlike work done on a server, for example by P H P. Put your scripts last in the HTML, so the whole page is read before the script starts changing it. The quickest test is an onclick on a button: onclick equals alert, parenthesis, quote, du klickade. Alert must be written with a small a. An alert works like a print, for testing. To change the text of the button itself, write this dot inner H T M L equals, and the new text. This means the tag you are in. Watch the quotes: the onclick value is inside double quotes, so the text inside must use single quotes, or the browser thinks the code ends there.",
+      sections: [
+        { heading: 'The DOM', html:
+          '<p><strong>DOM</strong> = Document Object Model: a tree (hierarchy) that JavaScript uses to read the HTML page, even when it changes. At the top is <code>document</code>; under it all the elements, which you reach by type, class or id.</p>' +
+          '<ul><li>HTML = structure, CSS = look, <strong>JavaScript = interactive</strong>.</li>' +
+          '<li>JavaScript runs on the <strong>client</strong> (the user\'s computer), unlike server code such as PHP.</li>' +
+          '<li>Put scripts <strong>last</strong> in the HTML so the page is read first.</li></ul>' },
+        { heading: 'onclick + alert', html:
+          '<pre>&lt;button onclick="alert(\'Du klickade\')"&gt;Alert&lt;/button&gt;</pre>' +
+          '<p><code>alert</code> with a <strong>small a</strong>. Use it like a print, to test.</p>' },
+        { heading: 'this.innerHTML: change the text', html:
+          '<pre>&lt;button onclick="this.innerHTML = \'Du klickade\'"&gt;innerHTML&lt;/button&gt;</pre>' +
+          '<p><code>this</code> = the tag you are in. <strong>Quotes inside quotes:</strong> the onclick value uses double quotes, so the text inside uses single quotes.</p>' }
+      ]
+    },
+    {
+      type: 'info',
+      title: 'JavaScript functions: getElementById, toggles, classList',
+      part: 'Recording · JavaScript & DOM',
+      audio: '/audio/html/15-js-functions.mp3',
+      speech: "Lesson fifteen. Functions. Code inside onclick is messy. Put it in a function in your own linked JavaScript file instead, so you can use it many times. Link the file last in the body with a script tag, s r c equals js slash testbed dot j s. A function starts with the word function, then a name, parentheses and curly braces. Inside, find the element with document dot get element by id, and the id in quotes. Save it in a variable, then change it, for example rubrik dot inner H T M L equals du klickade. On the button, write onclick equals the function name with parentheses. To switch between two states on each click, use a flag variable. Set flagga to zero outside the function. Inside: if flagga double equals zero, change the heading and set flagga to one. Else, change it back and set flagga to zero. To change the look, add a CSS class with element dot class list dot add, and the class name. Inspect element in the browser shows the class being added. If two classes set the same property, the one written later in the CSS file wins. You can also read facts about the browser: navigator dot language gives the language, like s v dash S E, and navigator dot cookie enabled says if cookies are on. Use if and else to write different texts. And give the script tag charset equals u t f 8, so å, ä and ö show correctly.",
+      sections: [
+        { heading: 'A function in your own file', html:
+          '<pre>&lt;h1 id="rubrik"&gt;JavaScript baby&lt;/h1&gt;\n&lt;button onclick="changeText()"&gt;Ändra rubrik&lt;/button&gt;\n...\n&lt;script src="js/testbed.js" charset="utf-8"&gt;&lt;/script&gt;   &lt;!-- last in body --&gt;</pre>' +
+          '<pre>// js/testbed.js\nfunction changeText() {\n  var rubrik = document.getElementById("rubrik");\n  rubrik.innerHTML = "Du klickade";\n}</pre>' +
+          '<ul><li><code>document.getElementById("rubrik")</code> finds the element with <code>id="rubrik"</code>.</li>' +
+          '<li>Naming the variable the same as the id makes it easy to keep track.</li>' +
+          '<li><code>charset="utf-8"</code> on the script tag makes å ä ö show correctly in text the script writes.</li></ul>' },
+        { heading: 'Toggle with a flag', html:
+          '<pre>var flagga = 0;\n\nfunction changeHeading() {\n  var rubrik = document.getElementById("rubrik");\n  if (flagga == 0) {\n    rubrik.innerHTML = "Du klickade";\n    flagga = 1;\n  } else {\n    rubrik.innerHTML = "JavaScript";\n    flagga = 0;\n  }\n}</pre>' },
+        { heading: 'Add a CSS class', html:
+          '<pre>function changeBG() {\n  var show = document.getElementById("show");   // &lt;body id="show"&gt;\n  show.classList.add("nybg");\n}</pre>' +
+          '<pre>.nybg    { background-color: pink; }\n.greenbg { background-color: lightgreen; }</pre>' +
+          '<p>Right-click → <strong>Inspect</strong> (granska element) shows the class being added. If an element has both classes, the rule written <strong>later in the CSS file</strong> wins, here the green one.</p>' },
+        { heading: 'Facts about the browser + if/else', html:
+          '<pre>document.getElementById("cookie").innerHTML =\n  "Cookies enabled is " + navigator.cookieEnabled;\n\nif (navigator.language == "sv-SE") {\n  document.getElementById("sprak").innerHTML = "Valt språk är svenska";\n} else {\n  document.getElementById("sprak").innerHTML = "Valt språk är inte svenska";\n}</pre>' +
+          '<p><code>==</code> compares. Don\'t forget the semicolon at the end of each line.</p>' }
+      ]
+    },
+    {
+      type: 'quiz',
+      title: 'Quiz: JavaScript and the DOM',
+      part: 'Recording · JavaScript & DOM',
+      questions: [
+        { q: 'What is the DOM?', options: ['A CSS framework', 'A tree JavaScript uses to read and change the HTML page', 'A web server', 'A type of image'], answer: 1, why: 'Document Object Model; document is at the top.' },
+        { q: 'Where does most JavaScript run?', options: ['On the server', 'On the client, the user\'s computer', 'In the database', 'In the CSS file'], answer: 1, why: 'Unlike server code such as PHP.' },
+        { q: 'Which is correct?', options: ['onclick="Alert(\'Hi\')"', 'onclick="alert(\'Hi\')"', 'onclick="alert("Hi")"', 'onclick=alert[Hi]'], answer: 1, why: 'Small a, and single quotes inside double quotes.' },
+        { q: 'In onclick="this.innerHTML = \'Du klickade\'", what is this?', options: ['The whole page', 'The tag you are in (the button)', 'The heading', 'The script file'], answer: 1, why: 'this = the current element.' },
+        { q: 'How do you find the element with id="rubrik"?', options: ['document.getElementById("rubrik")', 'document.id(rubrik)', '$("rubrik")', 'getElement.rubrik'], answer: 0, why: 'Then change it, e.g. .innerHTML = "...".' },
+        { q: 'A flag toggles between two texts. What does it hold?', options: ['The text itself', '0 or 1, switched on every click', 'The CSS class', 'The id'], answer: 1, why: 'if (flagga == 0) {...; flagga = 1} else {...; flagga = 0}' },
+        { q: 'How do you add the CSS class "nybg" to an element?', options: ['element.class = nybg', 'element.classList.add("nybg")', 'element.addClass(".nybg")', 'element.style = "nybg"'], answer: 1, why: 'classList.add.' },
+        { q: 'An element has both .nybg (pink) and .greenbg (green), and .greenbg comes later in the CSS file. Colour?', options: ['Pink', 'Green', 'Both, striped', 'None'], answer: 1, why: 'The rule written later wins.' },
+        { q: 'What does navigator.language give in a Swedish browser?', options: ['"Swedish"', '"sv-SE"', 'true', '"se"'], answer: 1, why: 'Compare it with == in an if.' },
+        { q: 'Text written by your script shows å ä ö wrong. Fix?', options: ['Use alert', 'Add charset="utf-8" to the script tag', 'Move the script to the head', 'Use innerText'], answer: 1, why: 'Tell the browser the script file is UTF-8.' }
+      ]
+    },
+    {
+      type: 'quiz',
+      title: 'Final quiz: selectors, tables, JavaScript',
+      part: 'Steps 20-27',
+      questions: [
+        { q: '#menu vs .menu:', options: ['# = class, . = id', '# = id (once), . = class (many)', 'Both are classes', 'Both are ids'], answer: 1, why: 'Hash for id, dot for class.' },
+        { q: 'Only links inside a paragraph should be purple:', options: ['p, a { }', 'p a { }', 'a p { }', 'p.a { }'], answer: 1, why: 'A space = inside.' },
+        { q: 'Underline a link only under the mouse:', options: ['a { text-decoration: none; } a:hover { text-decoration: underline; }', 'a:visited { underline: yes; }', 'a { hover: underline; }', 'a:active { text-decoration: none; }'], answer: 0, why: 'Remove it on a, add it back on a:hover.' },
+        { q: 'A table cell spanning two rows:', options: ['colspan="2"', 'rowspan="2"', 'span="rows"', 'height="2"'], answer: 1, why: 'rowspan = down; colspan = across.' },
+        { q: 'Give th cells a dark background and white text:', options: ['th { background-color: #336699; color: white; }', 'th { color: #336699; background: text-white; }', 'th { font: white; }', 'th { border: white; }'], answer: 0, why: 'color is the text colour.' },
+        { q: 'Why put script tags last in the body?', options: ['Scripts are optional', 'So the whole page is loaded before the script changes it', 'Browsers ignore scripts in the head', 'For SEO'], answer: 1, why: 'Otherwise the elements may not exist yet.' },
+        { q: 'Which line changes the heading with id="rubrik"?', options: ['document.getElementById("rubrik").innerHTML = "Hi";', 'rubrik = "Hi";', 'document.rubrik.text("Hi");', '#rubrik.innerHTML = "Hi";'], answer: 0, why: 'Find it, then set innerHTML.' },
+        { q: 'Which tool shows a class being added while you click?', options: ['The validator', 'Inspect element in the browser', 'Lorem ipsum', 'The CSS file'], answer: 1, why: 'Right-click → Inspect.' }
+      ]
     }
   ],
 
@@ -385,7 +563,35 @@ const STUDY_DATA = {
     { front: 'LAMP', back: 'Linux, Apache, MySQL, PHP' },
     { front: 'Apache, Nginx, IIS', back: 'Apache: long the most common\nNginx: over 30% of web servers\nIIS: Microsoft, Windows only' },
     { front: 'Why run the server in a virtual machine?', back: 'Does not disturb your computer, easy to remove, can switch between several servers.' },
-    { front: 'VirtualBox vs Vagrant', back: 'VirtualBox runs the virtual machines; Vagrant controls them.' }
+    { front: 'VirtualBox vs Vagrant', back: 'VirtualBox runs the virtual machines; Vagrant controls them.' },
+    { front: 'Tag selector for all paragraphs', back: 'p { ... }  (no angle brackets)' },
+    { front: '#id vs .class', back: '#hej: id, only ONCE per page\n.tjo: class, as many times as you like' },
+    { front: 'The universal selector', back: '* { ... }  selects every element. Rare; a border on * shows every element.' },
+    { front: 'Grouping selectors', back: 'body, p { font-size: 14px; }  — comma = both' },
+    { front: 'Descendant selector', back: 'p a { ... }  — space = links INSIDE a p' },
+    { front: 'a:hover, a:visited, a:active', back: 'hover: mouse over\nvisited: already clicked\nactive: being clicked' },
+    { front: 'Remove link underline / add it on hover', back: 'a { text-decoration: none; }\na:hover { text-decoration: underline; }' },
+    { front: 'Resize an image without squashing it', back: 'Set only width (e.g. width: 200px). The height follows.' },
+    { front: 'CSS comment', back: '/* comment */' },
+    { front: 'border shorthand order', back: 'border: thickness style colour;\ne.g. border: 2px solid black;' },
+    { front: 'tr, td, th', back: 'tr: table row\ntd: a cell (column) in the row\nth: table heading (bold)' },
+    { front: 'Rule for cells per row', back: 'Every row needs the same number of cells (or use colspan).' },
+    { front: 'Single lines between table cells', back: 'table { border-collapse: collapse; }' },
+    { front: 'Padding vs margin', back: 'Padding: space inside (the cell)\nMargin: space outside' },
+    { front: 'colspan vs rowspan', back: 'colspan="2": two columns wide\nrowspan="2": two rows high' },
+    { front: 'Every other row in a colour', back: 'Make a class (e.g. .radfarg { background-color: lightblue; }) and put it on every other <tr>.' },
+    { front: 'What are tables for today?', back: 'Showing data. Layout is done with divs and CSS, not tables.' },
+    { front: 'What is the DOM?', back: 'Document Object Model: a tree JavaScript uses to read and change the HTML page. document is at the top.' },
+    { front: 'Where does JavaScript run?', back: 'On the client, the user\'s computer (unlike server code like PHP).' },
+    { front: 'An alert on a button', back: '<button onclick="alert(\'Du klickade\')">  — small a, single quotes inside double' },
+    { front: 'Change the button\'s own text on click', back: 'onclick="this.innerHTML = \'Du klickade\'"  — this = the current tag' },
+    { front: 'Find an element by id', back: 'document.getElementById("rubrik")' },
+    { front: 'Call your function from a button', back: '<button onclick="changeText()">' },
+    { front: 'Toggle between two states', back: 'var flagga = 0;\nif (flagga == 0) { ...; flagga = 1; } else { ...; flagga = 0; }' },
+    { front: 'Add a CSS class with JavaScript', back: 'element.classList.add("nybg");' },
+    { front: 'Two classes set the same property. Which wins?', back: 'The rule written later in the CSS file.' },
+    { front: 'Browser language / cookies', back: 'navigator.language  (e.g. "sv-SE")\nnavigator.cookieEnabled  (true/false)' },
+    { front: 'å ä ö wrong in text from a script', back: '<script src="..." charset="utf-8">' }
   ]
 };
 
