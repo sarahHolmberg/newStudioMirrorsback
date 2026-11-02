@@ -24,6 +24,7 @@ from kokoro_onnx import Kokoro
 VOICE = "af_heart"  # CHANGE HERE: any Kokoro voice name
 SPEED = 0.95
 PAUSE_SECONDS = 1.5  # silence between lessons in all.mp3
+CODE_VOLUME = 1.35   # CHANGE HERE: code words this much louder than lessons, so they stand out
 
 
 def load_data(path):
@@ -32,10 +33,11 @@ def load_data(path):
     return json.loads(out)
 
 
-def to_mp3(samples, rate, mp3_path):
+def to_mp3(samples, rate, mp3_path, audio_filter=None):
     with tempfile.NamedTemporaryFile(suffix=".wav") as wav:
         sf.write(wav.name, samples, rate)
-        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", wav.name, "-ac", "1", "-b:a", "64k", mp3_path], check=True)
+        extra = ["-af", audio_filter] if audio_filter else []
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", wav.name, *extra, "-ac", "1", "-b:a", "64k", mp3_path], check=True)
 
 
 def make_codes(words, kokoro):
@@ -43,7 +45,9 @@ def make_codes(words, kokoro):
     for word in words:
         samples, rate = kokoro.create(f"Code word: {word}. ... {word}.", voice=VOICE, speed=SPEED, lang="en-us")
         out = f"audio/codes/{word}.mp3"
-        to_mp3(samples, rate, out)
+        # Louder than the lessons (a page cannot play above 100%, so it is built into the file);
+        # the limiter keeps any peak from clipping
+        to_mp3(samples, rate, out, f"volume={CODE_VOLUME},alimiter=limit=0.97")
         print(f"{out}: {len(samples) / rate:.1f}s")
 
 

@@ -10,7 +10,7 @@
  *
  * CHANGE HERE: bump CACHE when an mp3 is replaced at the same path, so phones fetch the new one.
  */
-const CACHE = 'study-v1';
+const CACHE = 'study-v2';
 
 const SHELL = [
   '/study/', '/study/battle/', '/study/bootstrap/',
