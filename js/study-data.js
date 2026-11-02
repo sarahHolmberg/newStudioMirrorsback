@@ -16,8 +16,6 @@
 const STUDY_DATA = {
   title: 'HTML Roadmap',
 
-  // One file with every lesson after each other, for listening on the go
-  audioAll: { src: '/audio/html/all.mp3', title: 'HTML: all lessons' },
 
   // Shown on the roadmap so it is clear why these are missing.
   skipped: ['Editor setup', 'VS Code shortcuts', 'Links & pages', 'Images'],
