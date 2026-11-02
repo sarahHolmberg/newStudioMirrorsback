@@ -5,14 +5,17 @@
  * (study-data.js for HTML, study-battle-data.js for Battle, study-bootstrap-data.js for Bootstrap). Flashcard scheduling from SRS (study-srs.js).
  *
  * Roadmap: steps unlock one by one. An info step is done when you press
- * "I've read this", and if it has audio, only after listening to it all the way
- * through REQUIRED_LISTENS times. A quiz step is done when you score at least passScore.
+ * "I've read this", and if it has audio, only after REQUIRED_LISTENS listens.
+ * Listening codes: lessons loop (repeat). Each of the first REQUIRED_LISTENS loops
+ * that is played all the way through ends with a spoken code word (study-codes.js).
+ * Typing a code you heard counts one listen, so looping hands-free still proves you listened.
+ * A quiz step is done when you score at least passScore.
  * Flashcards: spaced repetition. Only the cards that are due come up. Round 1
  * is every due card; each next round is only the ones you missed, until you
  * get them all. Then each card waits longer or shorter depending on how it went.
  * Audio: info steps with an mp3 get a player. It is a plain <audio> element
  * with Media Session info, so it keeps playing with the phone screen locked.
- * "Listen to all lessons" is a playlist of the same mp3s, so those listens count too.
+ * "Listen to all lessons" is a playlist of the same mp3s; it gives codes too.
  * Progress is kept in this browser (localStorage), separately per study line.
  * Offline: /study/sw.js saves the pages and data; this file asks it to also save the
  * current line's audio, in the background, and shows how far that has come.
@@ -30,7 +33,9 @@
   const PROGRESS_KEY = `${prefix}-progress-v2`; // { done: [stepIndex, ...] }; bump when the steps change
   const FLASH_KEY = `${prefix}-srs`;            // { [card front]: { box, due } }
   const GOALS_KEY = `${prefix}-goals`;          // { [goal id]: count }
-  const LISTENS_KEY = `${prefix}-listens`;      // { [mp3 path]: full listens }
+  const LISTENS_KEY = `${prefix}-listens`;      // { [mp3 path]: confirmed listens }
+  const CODES_KEY = `${prefix}-codes`;          // { [mp3 path]: [code words heard, not typed in yet] }
+  const REPEAT_KEY = 'study-repeat';            // 'off' to stop looping (all lines)
 
   // CHANGE HERE: full listens needed before an info step with audio can be finished
   const REQUIRED_LISTENS = 3;
@@ -76,7 +81,16 @@
   const backBtn = () => el('button', { textContent: '← Roadmap', onclick: renderRoadmap });
 
   const listensOf = (src) => load(LISTENS_KEY, {})[src] || 0;
-  const listenLabel = (src) => `🎧 ${Math.min(listensOf(src), REQUIRED_LISTENS)}/${REQUIRED_LISTENS}`;
+  const pendingOf = (src) => load(CODES_KEY, {})[src] || [];
+  const listenLabel = (src) => {
+    const waiting = pendingOf(src).length;
+    return `🎧 ${Math.min(listensOf(src), REQUIRED_LISTENS)}/${REQUIRED_LISTENS}${waiting ? ` +${waiting}` : ''}`;
+  };
+  function paintListenTags(src) {
+    document.querySelectorAll('.listen-tag').forEach((tag) => {
+      if (tag.dataset.src === src) tag.textContent = listenLabel(src);
+    });
+  }
   function listenTag(src) {
     const tag = el('span', { className: 'tag listen-tag', textContent: listenLabel(src) });
     tag.dataset.src = src; // countListens updates tags with this src
@@ -149,14 +163,111 @@
   // ---------- audio ----------
   // A plain <audio> element: phones keep playing it with the screen locked.
   // Media Session puts the title and play/pause on the lock screen.
-  function player(src, title, onListen) {
-    const audio = el('audio', { controls: true, preload: 'none', src });
+  const codeUrl = (word) => `/audio/codes/${word}.mp3`;
+  const repeatOn = () => { try { return localStorage.getItem(REPEAT_KEY) !== 'off'; } catch { return true; } };
+
+  // A new code word for this lesson, or null once enough codes are confirmed or waiting
+  function earnCode(src) {
+    const codes = load(CODES_KEY, {});
+    const pending = codes[src] || [];
+    if (listensOf(src) + pending.length >= REQUIRED_LISTENS) return null;
+    const free = STUDY_CODE_WORDS.filter((w) => !pending.includes(w));
+    const word = free[Math.floor(Math.random() * free.length)];
+    codes[src] = [...pending, word];
+    save(CODES_KEY, codes);
+    paintListenTags(src);
+    return word;
+  }
+
+  // Typed codes that match ones heard for this lesson each count one listen
+  function checkCodes(src, typed) {
+    const codes = load(CODES_KEY, {});
+    let pending = codes[src] || [];
+    const words = (typed.toLowerCase().match(/[a-zåäö]+/g) || []);
+    const right = [];
+    const wrong = [];
+    words.forEach((w) => {
+      if (pending.includes(w)) { right.push(w); pending = pending.filter((p) => p !== w); } else wrong.push(w);
+    });
+    codes[src] = pending;
+    save(CODES_KEY, codes);
+    if (right.length) {
+      const listens = load(LISTENS_KEY, {});
+      listens[src] = Math.min(REQUIRED_LISTENS, (listens[src] || 0) + right.length);
+      save(LISTENS_KEY, listens);
+    }
+    paintListenTags(src);
+    return { right, wrong };
+  }
+
+  function forgetCodes(src) {
+    const codes = load(CODES_KEY, {});
+    delete codes[src];
+    save(CODES_KEY, codes);
+    paintListenTags(src);
+  }
+
+  /**
+   * One <audio> that plays a lesson, then (if earned) its code word, then what comes next:
+   * the same lesson again when repeat is on, or opts.next() for the playlist.
+   * A loop earns a code only if at least 90% was really played (skipping ahead does not count).
+   */
+  function player(first, opts = {}) {
+    const audio = el('audio', { controls: true, preload: 'none', src: first.src });
+    let lesson = first;
+    let inCode = false;
+    const play = () => audio.play().catch(() => { /* the browser wants a tap first */ });
+
+    function loadLesson(next, autoplay) {
+      lesson = next;
+      inCode = false;
+      audio.src = next.src;
+      if (autoplay) play();
+    }
+    function afterLesson() {
+      if (opts.next) return opts.next();
+      if (audio.getAttribute('src') !== lesson.src) audio.src = lesson.src;
+      if (repeatOn()) { audio.currentTime = 0; play(); }
+    }
+
     audio.addEventListener('play', () => {
       document.querySelectorAll('audio').forEach((a) => { if (a !== audio) a.pause(); });
-      setMediaSession(audio, audio.dataset.title || title);
+      setMediaSession(audio, inCode ? `Code word · ${lesson.title}` : lesson.title, opts.media || {});
     });
-    countListens(audio, onListen);
-    return audio;
+
+    let heard = 0;
+    let last = null;
+    audio.addEventListener('timeupdate', () => {
+      const t = audio.currentTime;
+      // Normal playback moves a fraction of a second per update; a seek is a big jump and is ignored
+      if (last !== null && t > last && t - last < 1.5 * Math.max(1, audio.playbackRate)) heard += t - last;
+      last = t;
+    });
+    audio.addEventListener('emptied', () => { heard = 0; last = null; }); // new src
+    audio.addEventListener('ended', () => {
+      const full = !inCode && audio.duration && heard >= audio.duration * 0.9;
+      heard = 0;
+      last = null;
+      if (inCode) { inCode = false; return afterLesson(); }
+      const word = full ? earnCode(lesson.src) : null;
+      if (!word) return afterLesson();
+      inCode = true;
+      audio.src = codeUrl(word);
+      play();
+      if (opts.onCode) opts.onCode(lesson.src);
+    });
+
+    return { audio, loadLesson, get lesson() { return lesson; } };
+  }
+
+  function repeatButton() {
+    const btn = el('button', { className: 'repeat-btn', onclick: () => {
+      try { localStorage.setItem(REPEAT_KEY, repeatOn() ? 'off' : 'on'); } catch { /* stays on */ }
+      paint();
+    } });
+    const paint = () => { btn.textContent = repeatOn() ? '🔁 Repeat: on' : '➡️ Repeat: off'; };
+    paint();
+    return btn;
   }
 
   function setMediaSession(audio, title, extra = {}) {
@@ -176,62 +287,33 @@
     });
   }
 
-  // A listen counts when the track ends and at least 90% of it was actually played,
-  // so jumping to the end does not count. Adds one to LISTENS_KEY for the current src.
-  function countListens(audio, onListen) {
-    let heard = 0;
-    let last = null;
-    audio.addEventListener('timeupdate', () => {
-      const t = audio.currentTime;
-      // Normal playback moves a fraction of a second per update; a seek is a big jump and is ignored
-      if (last !== null && t > last && t - last < 1.5 * Math.max(1, audio.playbackRate)) heard += t - last;
-      last = t;
-    });
-    audio.addEventListener('emptied', () => { heard = 0; last = null; }); // new src
-    audio.addEventListener('ended', () => {
-      const src = audio.getAttribute('src');
-      if (audio.duration && heard >= audio.duration * 0.9) {
-        const listens = load(LISTENS_KEY, {});
-        listens[src] = (listens[src] || 0) + 1;
-        save(LISTENS_KEY, listens);
-        document.querySelectorAll('.listen-tag').forEach((tag) => {
-          if (tag.dataset.src === src) tag.textContent = listenLabel(src);
-        });
-        if (onListen) onListen(src);
-      }
-      heard = 0;
-      last = null;
-    });
-  }
-
-  // Every lesson's mp3 one after the other, in one player (keeps going with the screen locked)
+  // Every lesson's mp3 one after the other, in one player (keeps going with the screen locked).
+  // Codes earned here count for each lesson; type them in on the lesson's page.
   function playlist() {
     const tracks = steps.filter((s) => s.audio).map((s) => ({ src: s.audio, title: s.title }));
     let at = 0;
     const nowPlaying = el('span', { className: 'muted' });
-    const audio = player(tracks[0].src, tracks[0].title);
+    const p = player(tracks[0], {
+      next: () => { if (at < tracks.length - 1) go(at + 1, true); else if (repeatOn()) go(0, true); },
+      onCode: () => { nowPlaying.textContent = `Code word for lesson ${at + 1}: ${tracks[at].title}`; },
+      media: { previoustrack: () => go(at - 1, true), nexttrack: () => go(at + 1, true) }
+    });
 
     function go(n, autoplay) {
       at = (n + tracks.length) % tracks.length;
-      audio.dataset.title = tracks[at].title;
-      audio.src = tracks[at].src;
       nowPlaying.textContent = `Lesson ${at + 1} of ${tracks.length}: ${tracks[at].title}`;
-      if (autoplay) audio.play().catch(() => { /* the browser wants a tap first */ });
+      p.loadLesson(tracks[at], autoplay);
     }
-    audio.addEventListener('play', () => setMediaSession(audio, tracks[at].title, {
-      previoustrack: () => go(at - 1, true),
-      nexttrack: () => go(at + 1, true)
-    }));
-    audio.addEventListener('ended', () => { if (at < tracks.length - 1) go(at + 1, true); });
     go(0, false);
 
     return el('div', { className: 'listen-all' },
       el('strong', { textContent: '🎧 Listen to all lessons' }),
       nowPlaying,
-      audio,
+      p.audio,
       el('div', { className: 'verdict' },
-        el('button', { textContent: '⏮ Previous', onclick: () => go(at - 1, !audio.paused) }),
-        el('button', { textContent: 'Next ⏭', onclick: () => go(at + 1, !audio.paused) })));
+        el('button', { textContent: '⏮ Previous', onclick: () => go(at - 1, !p.audio.paused) }),
+        el('button', { textContent: 'Next ⏭', onclick: () => go(at + 1, !p.audio.paused) })),
+      repeatButton());
   }
 
   // ---------- info step ----------
@@ -247,21 +329,57 @@
       renderRoadmap();
     } });
     const listenNote = el('span', { className: 'muted' });
-    // Locked until the lesson has been heard REQUIRED_LISTENS times (steps already done stay done)
+    const codeBox = el('div', { className: 'code-box' });
+    const codeMsg = el('span', { className: 'code-msg', role: 'status' });
+
+    // Locked until REQUIRED_LISTENS codes are typed in (steps already done stay done)
     function paintDone() {
       const heard = step.audio ? listensOf(step.audio) : REQUIRED_LISTENS;
       const locked = !isDone(i) && heard < REQUIRED_LISTENS;
+      const left = REQUIRED_LISTENS - heard;
       doneBtn.disabled = locked;
       doneBtn.textContent = isDone(i) ? 'Back to roadmap ✓'
-        : locked ? `🔒 Listen ${REQUIRED_LISTENS - heard} more time${REQUIRED_LISTENS - heard > 1 ? 's' : ''}` : "I've read this ✓";
-      listenNote.textContent = `Heard all the way through ${heard} of ${REQUIRED_LISTENS} times` +
-        (heard >= REQUIRED_LISTENS ? ' ✓' : '. Skipping ahead does not count.');
+        : locked ? `🔒 ${left} more code${left > 1 ? 's' : ''} to unlock` : "I've read this ✓";
+      if (!step.audio) return;
+      const waiting = pendingOf(step.audio).length;
+      listenNote.textContent = heard >= REQUIRED_LISTENS
+        ? `Listened ${REQUIRED_LISTENS} of ${REQUIRED_LISTENS} times ✓`
+        : `Listened ${heard} of ${REQUIRED_LISTENS} times. Each full play ends with a code word: type it below.` +
+          (waiting ? ` ${waiting} code${waiting > 1 ? 's' : ''} waiting.` : '');
+      codeBox.hidden = heard >= REQUIRED_LISTENS || isDone(i);
+    }
+
+    if (step.audio) {
+      const input = el('input', { type: 'text', id: 'codeInput', placeholder: 'e.g. banana river', autocomplete: 'off', autocapitalize: 'none' });
+      const check = () => {
+        if (!input.value.trim()) return;
+        const { right, wrong } = checkCodes(step.audio, input.value);
+        input.value = '';
+        codeMsg.textContent = [
+          right.length ? `✓ ${right.join(', ')}` : '',
+          wrong.length ? `✗ ${wrong.join(', ')} ${wrong.length > 1 ? 'are not codes' : 'is not a code'} you heard for this lesson` : ''
+        ].filter(Boolean).join(' · ');
+        paintDone();
+      };
+      codeBox.append(
+        el('label', { htmlFor: 'codeInput', textContent: 'Codes you heard:' }),
+        el('div', { className: 'input-row' }, input, el('button', { textContent: 'Check', onclick: check })),
+        codeMsg,
+        el('button', { className: 'link-btn', textContent: 'Forgot the codes? Get new ones', onclick: () => {
+          forgetCodes(step.audio);
+          codeMsg.textContent = 'Old codes cleared. The next full plays give new ones.';
+          paintDone();
+        } }));
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') check(); });
     }
     paintDone();
+
+    const lessonPlayer = step.audio ? player({ src: step.audio, title: step.title }, { onCode: paintDone }) : null;
     show(`📖 Step ${i + 1} of ${steps.length}`,
       el('h2', { textContent: step.title }),
       el('p', { className: 'muted', textContent: `${step.part} · Info` }),
-      step.audio ? el('div', { className: 'listen' }, el('strong', { textContent: '🎧 Listen to this lesson' }), player(step.audio, step.title, paintDone), listenNote) : '',
+      step.audio ? el('div', { className: 'listen' },
+        el('strong', { textContent: '🎧 Listen to this lesson' }), lessonPlayer.audio, repeatButton(), listenNote, codeBox) : '',
       body,
       el('div', { className: 'nav-row' }, backBtn(), doneBtn));
   }
@@ -485,6 +603,7 @@
   // ---------- offline ----------
   const OFFLINE_CACHE = 'study-v1'; // same name as CACHE in /study/sw.js
   const audioUrls = [...new Set(steps.filter((s) => s.audio).map((s) => s.audio))];
+  const codeUrls = STUDY_CODE_WORDS.map(codeUrl); // small; saved with every line so codes play offline
 
   // "Saved on this device" line on the roadmap
   async function paintOffline() {
@@ -511,7 +630,7 @@
     if (!saveData && audioUrls.length) {
       window.addEventListener('load', () => setTimeout(() => {
         navigator.serviceWorker.ready.then((reg) => {
-          if (reg.active) reg.active.postMessage({ type: 'cache-audio', urls: audioUrls });
+          if (reg.active) reg.active.postMessage({ type: 'cache-audio', urls: [...codeUrls, ...audioUrls] });
         });
       }, 3000));
     }
