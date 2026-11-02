@@ -601,7 +601,7 @@
   }
 
   // ---------- offline ----------
-  const OFFLINE_CACHE = 'study-v1'; // same name as CACHE in /study/sw.js
+  const OFFLINE_CACHE = 'study-v2'; // same name as CACHE in /study/sw.js
   const audioUrls = [...new Set(steps.filter((s) => s.audio).map((s) => s.audio))];
   const codeUrls = STUDY_CODE_WORDS.map(codeUrl); // small; saved with every line so codes play offline
 
