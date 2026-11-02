@@ -5,7 +5,7 @@
  *   GET                          = { links: [{ id, name, link, createdAt }] }, newest first
  *   DELETE { id, code, stored }  = the Grid Player's Done button: writes a row in video_done (who = the code,
  *                                  the link, the name, stored = where the finished video is) and removes the link
- *   POST { code }                = "videos done" for that code: { who, count, payPerVideo, currency, total, videos }
+ *   POST { code }                = "videos done" for that code: { who, count, payAmount, payFor, payPerVideo, currency, total, videos }
  * Reading the links needs no code: only trusted people have the apps, and the same list is already
  * visible on the Video Vault page. Done and the counts need a done code, which is checked HERE
  * (server side). The codes live only in the Netlify env vars DONE_CODES / DONE_CODE, never in this public repo.
@@ -18,8 +18,10 @@ import { getDatabase } from '@netlify/database';
 
 // CHANGE HERE: most links one request can return (newest first).
 const MAX_ROWS = 500;
-// CHANGE HERE: what one finished video pays (the Grid Player's "videos done" window does the maths with this).
-const PAY_PER_VIDEO = 17000;
+// CHANGE HERE: the pay: PAY_FOR this many videos (17 000 XAF for 30 videos = 566.67 XAF a video).
+// The total is rounded only at the end, so 30 videos is exactly 17 000.
+const PAY_AMOUNT = 17000;
+const PAY_FOR = 30;
 const CURRENCY = 'XAF';
 // CHANGE HERE: most finished videos listed in the "videos done" window (the count and the total always include all of them).
 const MAX_DONE_ROWS = 500;
@@ -122,7 +124,10 @@ export default async (req) => {
         const videos = await run(db.sql`
           SELECT name, link, stored, done_at AS "doneAt" FROM video_done WHERE who = ${who} ORDER BY id DESC LIMIT ${MAX_DONE_ROWS}`);
         console.log('[API DATABASE] Videos done for', who, ':', count);
-        return reply({ who, count, payPerVideo: PAY_PER_VIDEO, currency: CURRENCY, total: count * PAY_PER_VIDEO, videos });
+        return reply({
+          who, count, payAmount: PAY_AMOUNT, payFor: PAY_FOR, payPerVideo: Math.round((PAY_AMOUNT / PAY_FOR) * 100) / 100,
+          currency: CURRENCY, total: Math.round((count * PAY_AMOUNT) / PAY_FOR), videos,
+        });
       }
 
       const id = Number(body.id);
