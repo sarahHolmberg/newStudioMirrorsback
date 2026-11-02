@@ -2,6 +2,7 @@
 make-study-audio.py
 Turns the `speech` text of every info step in a study data file into an mp3,
 plus, if the data file has `audioAll`, one mp3 with every lesson after each other.
+Given js/study-codes.js (a list of words) instead, it makes /audio/codes/<word>.mp3.
 
 Uses the free offline Kokoro voice (pip install kokoro-onnx soundfile) and ffmpeg.
 Model files: kokoro-v1.0.int8.onnx and voices-v1.0.bin from
@@ -37,9 +38,20 @@ def to_mp3(samples, rate, mp3_path):
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", wav.name, "-ac", "1", "-b:a", "64k", mp3_path], check=True)
 
 
+def make_codes(words, kokoro):
+    os.makedirs("audio/codes", exist_ok=True)
+    for word in words:
+        samples, rate = kokoro.create(f"Code word: {word}. ... {word}.", voice=VOICE, speed=SPEED, lang="en-us")
+        out = f"audio/codes/{word}.mp3"
+        to_mp3(samples, rate, out)
+        print(f"{out}: {len(samples) / rate:.1f}s")
+
+
 def main(data_path, model_path, voices_path):
     data = load_data(data_path)
     kokoro = Kokoro(model_path, voices_path)
+    if isinstance(data, list):  # js/study-codes.js: just the code words
+        return make_codes(data, kokoro)
     all_parts, rate = [], 24000
     for step in data["steps"]:
         if not step.get("speech") or not step.get("audio"):

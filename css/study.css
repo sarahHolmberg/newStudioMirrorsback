@@ -67,3 +67,11 @@ body.study-page { height: auto; min-height: 100vh; align-items: flex-start; padd
 .goal-head { display: flex; justify-content: space-between; gap: 8px; font-weight: bold; }
 .goal-count { font-variant-numeric: tabular-nums; }
 .goal .bar { margin: 6px 0; }
+
+/* Listening codes + repeat */
+.repeat-btn { align-self: flex-start; }
+.code-box { display: flex; flex-direction: column; gap: 4px; }
+.code-box[hidden] { display: none; }
+.code-box .input-row { margin: 0; }
+.code-msg { font-size: 12px; }
+.link-btn { align-self: flex-start; background: none; border: none; padding: 0; color: #0a246a; text-decoration: underline; font-size: 12px; }

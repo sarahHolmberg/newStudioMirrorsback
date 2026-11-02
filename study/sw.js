@@ -15,7 +15,7 @@ const CACHE = 'study-v1';
 const SHELL = [
   '/study/', '/study/battle/', '/study/bootstrap/',
   '/css/style.css', '/css/study.css',
-  '/js/study.js', '/js/study-srs.js',
+  '/js/study.js', '/js/study-srs.js', '/js/study-codes.js',
   '/js/study-data.js', '/js/study-battle-data.js', '/js/study-bootstrap-data.js'
 ];
 
