@@ -14,6 +14,8 @@
  * with Media Session info, so it keeps playing with the phone screen locked.
  * "Listen to all lessons" is a playlist of the same mp3s, so those listens count too.
  * Progress is kept in this browser (localStorage), separately per study line.
+ * Offline: /study/sw.js saves the pages and data; this file asks it to also save the
+ * current line's audio, in the background, and shows how far that has come.
  */
 (() => {
   // CHANGE HERE: the study lines shown as tabs on the roadmap
@@ -121,6 +123,7 @@
         ? `All ${steps.length} steps done — you've covered the whole course!`
         : `${doneCount} of ${steps.length} steps done. Steps unlock one by one.` }),
       bar,
+      el('p', { className: 'muted offline-status' }),
       STUDY_DATA.skipped && STUDY_DATA.skipped.length
         ? el('p', { className: 'muted', textContent: `Left out (you know these): ${STUDY_DATA.skipped.join(', ')}` })
         : '',
@@ -128,6 +131,7 @@
       steps.some((s) => s.audio) ? playlist() : '',
       road,
       el('div', { className: 'nav-row' }, resetBtn));
+    paintOffline();
   }
 
   function lineTabs() {
@@ -476,6 +480,43 @@
     return el('table', { className: 'boxes' },
       el('thead', {}, el('tr', {}, el('th', { textContent: 'Box' }), el('th', { textContent: 'Comes back after' }), el('th', { textContent: 'Cards' }))),
       el('tbody', {}, ...rows));
+  }
+
+  // ---------- offline ----------
+  const OFFLINE_CACHE = 'study-v1'; // same name as CACHE in /study/sw.js
+  const audioUrls = [...new Set(steps.filter((s) => s.audio).map((s) => s.audio))];
+
+  // "Saved on this device" line on the roadmap
+  async function paintOffline() {
+    const line = document.querySelector('.offline-status');
+    if (!line || !('caches' in window) || !('serviceWorker' in navigator)) return;
+    let saved = 0;
+    try {
+      const cache = await caches.open(OFFLINE_CACHE);
+      for (const url of audioUrls) if (await cache.match(url)) saved++;
+    } catch { return; } // storage blocked (private mode): say nothing
+    const total = audioUrls.length;
+    line.textContent = saved === total ? '📥 Saved on this device: this roadmap works offline.'
+      : navigator.onLine ? `📥 Saving for offline… audio for ${saved} of ${total} lessons`
+      : `📥 Offline. Audio saved for ${saved} of ${total} lessons; text, quizzes and flashcards work.`;
+  }
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/study/sw.js', { scope: '/study/' }).catch(() => { /* no offline, page still works */ });
+    navigator.serviceWorker.addEventListener('message', (e) => {
+      if (e.data && e.data.type === 'audio-cached') paintOffline();
+    });
+    // Once the page has settled, ask for this line's audio (skipped when data saver is on)
+    const saveData = navigator.connection && navigator.connection.saveData;
+    if (!saveData && audioUrls.length) {
+      window.addEventListener('load', () => setTimeout(() => {
+        navigator.serviceWorker.ready.then((reg) => {
+          if (reg.active) reg.active.postMessage({ type: 'cache-audio', urls: audioUrls });
+        });
+      }, 3000));
+    }
+    window.addEventListener('online', paintOffline);
+    window.addEventListener('offline', paintOffline);
   }
 
   renderRoadmap();
