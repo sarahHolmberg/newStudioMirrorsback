@@ -10,13 +10,13 @@
  *
  * CHANGE HERE: bump CACHE when an mp3 is replaced at the same path, so phones fetch the new one.
  */
-const CACHE = 'study-v2';
+const CACHE = 'study-v3';
 
 const SHELL = [
-  '/study/', '/study/battle/', '/study/bootstrap/',
+  '/study/', '/study/battle/',
   '/css/style.css', '/css/study.css',
   '/js/study.js', '/js/study-srs.js', '/js/study-codes.js',
-  '/js/study-data.js', '/js/study-battle-data.js', '/js/study-bootstrap-data.js'
+  '/js/study-battle-data.js'
 ];
 
 self.addEventListener('install', (event) => {

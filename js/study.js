@@ -2,7 +2,7 @@
  * study.js
  * The /study page: a roadmap of info and quiz steps, plus a flashcard deck.
  * Content comes from STUDY_DATA: each study line has its own data file
- * (study-data.js for HTML, study-battle-data.js for Battle, study-bootstrap-data.js for Bootstrap). Flashcard scheduling from SRS (study-srs.js).
+ * (study-battle-data.js for Battle). Flashcard scheduling from SRS (study-srs.js).
  *
  * Roadmap: steps unlock one by one. An info step is done when you press
  * "I've read this", and if it has audio, only after REQUIRED_LISTENS listens.
@@ -23,9 +23,7 @@
 (() => {
   // CHANGE HERE: the study lines shown as tabs on the roadmap
   const LINES = [
-    { id: 'html', name: 'HTML', href: '/study/' },
-    { id: 'battle', name: 'Battle', href: '/study/battle/' },
-    { id: 'bootstrap', name: 'Bootstrap', href: '/study/bootstrap/' }
+    { id: 'battle', name: 'Battle', href: '/study/' }
   ];
 
   // The HTML line keeps its original key names so saved progress carries over
@@ -149,6 +147,7 @@
   }
 
   function lineTabs() {
+    if (LINES.length < 2) return ''; // tabs only when there is more than one line
     const current = STUDY_DATA.id || 'html';
     return el('nav', { className: 'lines' }, ...LINES.map((line) => line.id === current
       ? el('span', { className: 'line-tab active', textContent: line.name })
@@ -322,7 +321,7 @@
     const body = el('div');
     step.sections.forEach((s) => {
       body.append(el('h3', { textContent: s.heading }));
-      body.append(el('div', { innerHTML: s.html })); // trusted content from study-data.js
+      body.append(el('div', { innerHTML: s.html })); // trusted content from the study data file
     });
     const doneBtn = el('button', { onclick: () => {
       markDone(i);
@@ -601,7 +600,7 @@
   }
 
   // ---------- offline ----------
-  const OFFLINE_CACHE = 'study-v2'; // same name as CACHE in /study/sw.js
+  const OFFLINE_CACHE = 'study-v3'; // same name as CACHE in /study/sw.js
   const audioUrls = [...new Set(steps.filter((s) => s.audio).map((s) => s.audio))];
   const codeUrls = STUDY_CODE_WORDS.map(codeUrl); // small; saved with every line so codes play offline
 

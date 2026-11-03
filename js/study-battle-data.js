@@ -1,7 +1,10 @@
 /**
  * study-battle-data.js
- * The "Battle" study line (/study/battle/): how to build a battle round from a song.
- * Same shape as study-data.js, plus:
+ * The "Battle" study line (/study/ and /study/battle/): how to build a battle round from a song.
+ * Steps and cards:
+ *  - info step:  { type: 'info', title, part, sections: [{ heading, html }] }
+ *  - quiz step:  { type: 'quiz', title, part, questions: [{ q, options: [...], answer: <index>, why }] }
+ *  - flashcard:  { front, back }
  *  - info steps can have `audio` (an mp3 under /audio/battle/) and `speech`
  *    (the text that mp3 reads; scripts/make-study-audio.py turns it into the mp3)
  *  - a goals step: { type: 'goals', title, part, deadline: 'MM-DD', goals: [{ id, label, target }] }
