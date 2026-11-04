@@ -149,7 +149,7 @@ function appendLinks(links) {
   console.log('[RENDER] Added', links.length, 'links.');
 }
 
-// ---- ADD LINK: "Add" asks for a picture, then link + name + picture are sent together ----
+// ---- ADD LINK: step 1 name + link (Submit), step 2 the picture (Send): then all three are sent together ----
 /** Shrinks the chosen picture to a JPEG (longest side MAX_SIDE) and returns it as base64 text. */
 async function toJpegBase64(file) {
   const bmp = await createImageBitmap(file).catch(() => {
@@ -166,33 +166,79 @@ async function toJpegBase64(file) {
   return canvas.toDataURL('image/jpeg', 0.8).split(',')[1]; // drop the "data:image/jpeg;base64," start
 }
 
-addBtn.addEventListener('click', () => {
-  console.log('[ADD CLICKED] link:', linkInput.value.trim());
-  if (!linkInput.value.trim()) return console.warn('[ADD ABORTED] Empty input, nothing saved.');
-  setMsg('Now choose a picture for this link.', false);
-  picInput.click(); // must happen right inside the click, or phones block the picker
-});
+// Step 1: name + link, then Submit. Both are checked here first, so the picture step only opens for a link that will be accepted.
+const picDialog = document.getElementById('picDialog');
+const picForm = document.getElementById('picForm');
+const picWhat = document.getElementById('picWhat');
+const picPreview = document.getElementById('picPreview');
+const picMsg = document.getElementById('picMsg');
+const picSend = document.getElementById('picSend');
+let picFile = null; // the picture chosen or pasted in step 2
 
-picInput.addEventListener('change', async () => {
-  const file = picInput.files[0];
-  picInput.value = ''; // lets the same picture be chosen again next time
-  if (!file) return console.warn('[ADD] No picture chosen, nothing saved.');
+function isInstagramLink(raw) {
+  try {
+    const url = new URL(raw);
+    const host = url.hostname.toLowerCase();
+    return url.protocol === 'https:' && (host === 'instagram.com' || host.endsWith('.instagram.com'));
+  } catch { return false; }
+}
+
+addBtn.addEventListener('click', () => {
   const link = linkInput.value.trim();
   const name = nameInput.value.trim();
-  console.log('[ADD] Picture chosen:', file.name, '| bytes:', file.size);
+  console.log('[SUBMIT CLICKED] link:', link, '| name:', name || '(none)');
+  if (!name) { setMsg('Please type the name.', true); return nameInput.focus(); }
+  if (!isInstagramLink(link)) { setMsg('Please paste a valid Instagram link (https://www.instagram.com/...).', true); return linkInput.focus(); }
+  setMsg('', false);
+  // Step 2: the picture
+  picFile = null; picInput.value = ''; picPreview.classList.add('hidden'); picPreview.removeAttribute('src');
+  picMsg.textContent = ''; picSend.disabled = true;
+  picWhat.textContent = name + ' · ' + link;
+  picDialog.showModal();
+  console.log('[ADD] Step 2: asking for the picture.');
+});
 
-  addBtn.disabled = true;
+/** Shows the chosen or pasted picture and allows Send. */
+function setPicture(file) {
+  if (!file || !file.type.startsWith('image/')) { picMsg.textContent = 'That is not a picture.'; return; }
+  picFile = file;
+  if (picPreview.src) URL.revokeObjectURL(picPreview.src);
+  picPreview.src = URL.createObjectURL(file);
+  picPreview.classList.remove('hidden');
+  picMsg.textContent = ''; picSend.disabled = false;
+  console.log('[ADD] Picture ready:', file.name || '(pasted)', '| bytes:', file.size);
+}
+picInput.addEventListener('change', () => picInput.files[0] && setPicture(picInput.files[0]));
+document.addEventListener('paste', (e) => {
+  if (!picDialog.open) return;
+  const item = [...(e.clipboardData?.items || [])].find((it) => it.type.startsWith('image/'));
+  if (!item) { picMsg.textContent = 'There is no picture to paste. Copy a picture first.'; return; }
+  e.preventDefault();
+  setPicture(item.getAsFile());
+});
+document.getElementById('picBack').addEventListener('click', () => picDialog.close());
+
+// Send: name + link + picture go to the server together, in one request
+picForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!picFile) return;
+  const link = linkInput.value.trim();
+  const name = nameInput.value.trim();
+  picSend.disabled = true; addBtn.disabled = true;
+  picMsg.textContent = 'Sending…';
   try {
-    const image = await toJpegBase64(file);
+    const image = await toJpegBase64(picFile);
     console.log('[ADD] Picture shrunk. base64 chars:', image.length);
     const { added } = await DB.addVideo(link, name, image);
+    picDialog.close();
     linkInput.value = '';
     nameInput.value = '';
     setMsg(added ? 'Saved!' : 'That link was already saved.', false);
     if (added && loaded) await loadPage(true); // refresh the open list so the new link shows on top
   } catch (err) {
     console.error('[ADD FAILED]', err);
-    setMsg(err.message, true);
+    picMsg.textContent = err.message;
+    picSend.disabled = false;
   } finally {
     addBtn.disabled = false;
   }

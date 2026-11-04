@@ -2,7 +2,8 @@
  * netlify/functions/links-api.mjs
  * -----------------------------------------------------------------------
  * API for OTHER apps (e.g. the Grid Player) to read the links and mark one done.
- *   GET                          = { links: [{ id, name, link, createdAt }] }, newest first
+ *   GET                          = { links: [{ id, name, link, createdAt, hasImage }] }, newest first
+ *                                  (the picture itself: GET /.netlify/functions/links?image=<id>)
  *   DELETE { id, code, stored }  = the Grid Player's Done button: writes a row in video_done (who = the code,
  *                                  the link, the name, stored = where the finished video is) and removes the link
  *   POST { code }                = "videos done" for that code: { who, count, payAmount, payFor, payPerVideo, currency, total, videos }
@@ -15,6 +16,7 @@
  */
 import crypto from 'node:crypto';
 import { getDatabase } from '@netlify/database';
+import { run, tables } from '../shared/tables.mjs';
 
 // CHANGE HERE: most links one request can return (newest first).
 const MAX_ROWS = 500;
@@ -55,41 +57,8 @@ function whoFor(code) {
 const db = getDatabase();
 console.log('[API INIT] DATABASE client ready.');
 
-/** Runs a db.sql query and always returns an array of rows. */
-async function run(query) {
-  const res = typeof query.execute === 'function' ? await query.execute() : await query;
-  return Array.isArray(res) ? res : res?.rows ?? [];
-}
-
-// Same table as links.mjs (keep in sync), so this API also works before links.mjs has ever run.
-let tableReady = null;
-function ensureTable() {
-  if (!tableReady) {
-    console.log('[API DATABASE] Ensuring table video_links exists.');
-    tableReady = (async () => {
-      await run(db.sql`
-        CREATE TABLE IF NOT EXISTS video_links (
-          id SERIAL PRIMARY KEY,
-          link TEXT UNIQUE NOT NULL,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-        )`);
-      await run(db.sql`ALTER TABLE video_links ADD COLUMN IF NOT EXISTS name TEXT NOT NULL DEFAULT ''`);
-      await run(db.sql`ALTER TABLE video_links ADD COLUMN IF NOT EXISTS image TEXT`);
-      // One row per Done: who did which video, and where the finished video is stored
-      await run(db.sql`
-        CREATE TABLE IF NOT EXISTS video_done (
-          id SERIAL PRIMARY KEY,
-          who TEXT NOT NULL,
-          link TEXT NOT NULL,
-          name TEXT NOT NULL DEFAULT '',
-          stored TEXT NOT NULL DEFAULT '',
-          done_at TIMESTAMPTZ NOT NULL DEFAULT now()
-        )`);
-      await run(db.sql`CREATE INDEX IF NOT EXISTS video_done_who ON video_done (who)`);
-    })().catch((err) => { tableReady = null; throw err; });
-  }
-  return tableReady;
-}
+// The tables (and the one-time clear) live in netlify/shared/tables.mjs, shared with links.mjs.
+const ensureTable = tables(db, 'API');
 
 export default async (req) => {
   console.log('[API] Invoked. Method:', req.method);
@@ -101,7 +70,7 @@ export default async (req) => {
 
     if (req.method === 'GET') {
       const links = await run(db.sql`
-        SELECT id, name, link, created_at AS "createdAt" FROM video_links ORDER BY id DESC LIMIT ${MAX_ROWS}`);
+        SELECT id, name, link, created_at AS "createdAt", (image IS NOT NULL) AS "hasImage" FROM video_links ORDER BY id DESC LIMIT ${MAX_ROWS}`);
       console.log('[API DATABASE] Sent', links.length, 'links.');
       return reply({ links });
     }

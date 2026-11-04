@@ -25,10 +25,8 @@
         <label for="linkInput">Paste Instagram link:</label>
         <div class="input-row">
           <input type="text" id="linkInput" placeholder="https://www.instagram.com/..." inputmode="url" />
-          <button id="addBtn">Add Video</button>
+          <button id="addBtn">Submit</button>
         </div>
-        <!-- Opened by the Add button: every link needs a picture -->
-        <input type="file" id="picInput" accept="image/*" class="hidden" />
         <p id="msg" role="status"></p>
 
         <div class="btn-row">
@@ -74,6 +72,21 @@
       <p id="codeMsg" class="err" role="alert"></p>
       <button type="submit">Remove</button>
       <button type="button" id="codeCancel">Cancel</button>
+    </form>
+  </dialog>
+
+  <!-- Step 2 of adding a video: after Submit, the picture. Then name + link + picture are sent together. -->
+  <dialog id="picDialog">
+    <form id="picForm">
+      <p><strong>Step 2: add a picture</strong></p>
+      <p id="picWhat" class="pic-what"></p>
+      <label for="picInput">Choose a picture or take a photo:</label>
+      <input type="file" id="picInput" accept="image/*" />
+      <p class="pic-hint">…or copy a picture and paste it here (Ctrl+V).</p>
+      <img id="picPreview" class="hidden" alt="The picture that will be sent" />
+      <p id="picMsg" class="err" role="alert"></p>
+      <button type="submit" id="picSend" disabled>Send</button>
+      <button type="button" id="picBack">Back</button>
     </form>
   </dialog>
 

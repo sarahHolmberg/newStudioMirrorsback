@@ -121,6 +121,11 @@ body.vault { display: block; height: auto; padding: 12px; }
 .ico:active { border-style: inset; }
 .vault .ico { min-height: 32px; } /* keeps the icons small on phones (beats the 44px button rule) */
 #scissorsBtn.on { border-style: inset; background: #d4d0c8; }
+.vault #picForm label { display: block; margin: 6px 0 4px; }
+.vault .pic-what { overflow-wrap: anywhere; color: #333; }
+.vault .pic-hint { color: #555; font-size: 12px; margin: 6px 0; }
+.vault #picPreview { display: block; max-width: 260px; max-height: 220px; margin: 6px 0; border: 1px solid #7f9db9; }
+.vault #picPreview.hidden { display: none; }
 .vault dialog { background: #ece9d8; border: 2px solid #0a246a; border-radius: 6px; font-family: Tahoma, sans-serif; font-size: 13px; max-width: 90vw; }
 .vault #codeInput { display: block; width: 100%; box-sizing: border-box; font-size: 16px; padding: 6px; }
 .vault #codeMsg { min-height: 1em; margin: 6px 0; }

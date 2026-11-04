@@ -4,7 +4,7 @@
  * Instagram links (+ a name + a picture) stored in the Netlify DATABASE.
  *   GET    ?before=<id>            = next page of links, newest first
  *   GET    ?image=<id>             = the picture of one link (JPEG)
- *   POST   { link, name, image }   = save a new link; image (JPEG, base64) is required
+ *   POST   { link, name, image }   = save a new link; all three are required (image = JPEG, base64)
  *   DELETE { ids, code }           = remove clipped links; needs the scissors code
  * The scissors code is checked HERE (server side). The page never contains it.
  * Pictures are kept as base64 text in the DATABASE and are NOT sent with the
@@ -13,6 +13,7 @@
  */
 import crypto from 'node:crypto';
 import { getDatabase } from '@netlify/database';
+import { run, tables } from '../shared/tables.mjs';
 
 // CHANGE HERE: how many links each "load" returns.
 const PAGE_SIZE = 5;
@@ -31,30 +32,8 @@ const sha = (s) => crypto.createHash('sha256').update(s).digest();
 const same = (a, b) => crypto.timingSafeEqual(sha(a), sha(b)); // constant-time compare
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** Runs a db.sql query and always returns an array of rows. */
-async function run(query) {
-  const res = typeof query.execute === 'function' ? await query.execute() : await query;
-  return Array.isArray(res) ? res : res?.rows ?? [];
-}
-
-// Create/upgrade the table once per cold start. If it fails, try again next request.
-let tableReady = null;
-function ensureTable() {
-  if (!tableReady) {
-    console.log('[LINKS DATABASE] Ensuring table video_links (name + image columns) exists.');
-    tableReady = (async () => {
-      await run(db.sql`
-        CREATE TABLE IF NOT EXISTS video_links (
-          id SERIAL PRIMARY KEY,
-          link TEXT UNIQUE NOT NULL,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-        )`);
-      await run(db.sql`ALTER TABLE video_links ADD COLUMN IF NOT EXISTS name TEXT NOT NULL DEFAULT ''`);
-      await run(db.sql`ALTER TABLE video_links ADD COLUMN IF NOT EXISTS image TEXT`);
-    })().catch((err) => { tableReady = null; throw err; });
-  }
-  return tableReady;
-}
+// The tables (and the one-time clear) live in netlify/shared/tables.mjs, shared with links-api.mjs.
+const ensureTable = tables(db, 'LINKS');
 
 /** Returns a clean https Instagram URL string, or null if the link is not acceptable. */
 function cleanInstagramLink(raw) {
@@ -121,6 +100,10 @@ export default async (req) => {
         return Response.json({ error: 'A picture is required (JPEG, not too big).' }, { status: 400 });
       }
       const name = typeof body.name === 'string' ? body.name.trim().slice(0, MAX_NAME_LENGTH) : '';
+      if (!name) {
+        console.warn('[LINKS] Rejected: no name.');
+        return Response.json({ error: 'Please type the name.' }, { status: 400 });
+      }
       // Same link again: only fills in a missing name or picture, never overwrites.
       const rows = await run(db.sql`
         INSERT INTO video_links (link, name, image) VALUES (${link}, ${name}, ${image})
