@@ -75,3 +75,12 @@ body.study-page { height: auto; min-height: 100vh; align-items: flex-start; padd
 .code-box .input-row { margin: 0; }
 .code-msg { font-size: 12px; }
 .link-btn { align-self: flex-start; background: none; border: none; padding: 0; color: #0a246a; text-decoration: underline; font-size: 12px; }
+
+/* Truck line: pictures, tables, video links */
+.truck-fig { margin: 8px 0; }
+.truck-fig img { display: block; width: 100%; max-width: 420px; height: auto; border: 2px inset #999; background: #fff; }
+.truck-fig figcaption { font-size: 11px; opacity: 0.7; }
+.truck-table { width: 100%; border-collapse: collapse; background: #fff; font-size: 12px; }
+.truck-table th, .truck-table td { border: 1px solid #bbb; padding: 4px 6px; text-align: left; vertical-align: top; }
+.video-list { padding-left: 18px; }
+.video-list li { margin-bottom: 4px; }

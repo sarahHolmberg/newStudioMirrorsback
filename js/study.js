@@ -2,7 +2,7 @@
  * study.js
  * The /study page: a roadmap of info and quiz steps, plus a flashcard deck.
  * Content comes from STUDY_DATA: each study line has its own data file
- * (study-battle-data.js for Battle). Flashcard scheduling from SRS (study-srs.js).
+ * (study-battle-data.js for Battle, study-truck-data.js for Truck). Flashcard scheduling from SRS (study-srs.js).
  *
  * Roadmap: steps unlock one by one. An info step is done when you press
  * "I've read this", and if it has audio, only after REQUIRED_LISTENS listens.
@@ -23,7 +23,8 @@
 (() => {
   // CHANGE HERE: the study lines shown as tabs on the roadmap
   const LINES = [
-    { id: 'battle', name: 'Battle', href: '/study/' }
+    { id: 'battle', name: 'Battle', href: '/study/' },
+    { id: 'truck', name: 'Truck', href: '/study/truck/' }
   ];
 
   // The HTML line keeps its original key names so saved progress carries over
@@ -436,14 +437,16 @@
       const q = questions[current];
       const options = el('div', { className: 'options' });
       const feedback = el('div');
-      const buttons = q.options.map((text, k) => el('button', { textContent: text, onclick: () => pick(k) }));
+      // Options in a new random order every time, so the right answer's position gives nothing away
+      const order = shuffle(q.options.map((_, k) => k));
+      const buttons = order.map((k) => el('button', { textContent: q.options[k], onclick: () => pick(k) }));
       options.append(...buttons);
 
       function pick(k) {
         buttons.forEach((b) => { b.disabled = true; });
-        buttons[q.answer].classList.add('right');
+        buttons[order.indexOf(q.answer)].classList.add('right');
         const correct = k === q.answer;
-        if (correct) right++; else buttons[k].classList.add('wrong');
+        if (correct) right++; else buttons[order.indexOf(k)].classList.add('wrong');
         const last = current === questions.length - 1;
         feedback.replaceChildren(
           el('p', { className: 'feedback' }, el('strong', { textContent: correct ? '✓ Right! ' : '✗ Not quite. ' }), q.why),
@@ -600,7 +603,7 @@
   }
 
   // ---------- offline ----------
-  const OFFLINE_CACHE = 'study-v3'; // same name as CACHE in /study/sw.js
+  const OFFLINE_CACHE = 'study-v4'; // same name as CACHE in /study/sw.js
   const audioUrls = [...new Set(steps.filter((s) => s.audio).map((s) => s.audio))];
   const codeUrls = STUDY_CODE_WORDS.map(codeUrl); // small; saved with every line so codes play offline
 
