@@ -603,7 +603,7 @@
   }
 
   // ---------- offline ----------
-  const OFFLINE_CACHE = 'study-v4'; // same name as CACHE in /study/sw.js
+  const OFFLINE_CACHE = 'study-v5'; // same name as CACHE in /study/sw.js
   const audioUrls = [...new Set(steps.filter((s) => s.audio).map((s) => s.audio))];
   const codeUrls = STUDY_CODE_WORDS.map(codeUrl); // small; saved with every line so codes play offline
 
@@ -623,7 +623,7 @@
   }
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/study/sw.js', { scope: '/study/' }).catch(() => { /* no offline, page still works */ });
+    navigator.serviceWorker.register('/study/sw.js', { scope: '/study/', updateViaCache: 'none' }).catch(() => { /* no offline, page still works */ });
     navigator.serviceWorker.addEventListener('message', (e) => {
       if (e.data && e.data.type === 'audio-cached') paintOffline();
     });

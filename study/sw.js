@@ -10,7 +10,7 @@
  *
  * CHANGE HERE: bump CACHE when an mp3 is replaced at the same path, so phones fetch the new one.
  */
-const CACHE = 'study-v4';
+const CACHE = 'study-v5';
 
 const SHELL = [
   '/study/', '/study/battle/', '/study/truck/',
@@ -70,7 +70,7 @@ self.addEventListener('fetch', (event) => {
 async function networkFirst(req) {
   const cache = await caches.open(CACHE);
   try {
-    const res = await fetch(req);
+    const res = await fetch(req, { cache: 'no-cache' }); // always ask the server, not the browser's HTTP cache
     if (res.ok) cache.put(req, res.clone());
     return res;
   } catch {
