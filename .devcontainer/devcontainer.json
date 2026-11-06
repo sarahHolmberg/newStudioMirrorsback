@@ -1,0 +1,7 @@
+{
+  "name": "Studio Mirrors",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+  "postCreateCommand": "npm install",
+  "forwardPorts": [8888],
+  "portsAttributes": { "8888": { "label": "Local preview (npm run preview)", "onAutoForward": "openBrowser" } }
+}
