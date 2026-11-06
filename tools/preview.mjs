@@ -29,6 +29,7 @@ const TEST_ENV = {
   VV_USERNAME: 'test',
   VV_PASSWORD: 'test',
   IMPORT_KEY: 'test-import',
+  DEADLINES: 'TEST=' + new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10), // a week from today
 };
 for (const [k, v] of Object.entries(TEST_ENV)) process.env[k] ??= v;
 
