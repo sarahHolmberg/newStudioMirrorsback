@@ -25,7 +25,7 @@ import readline from 'node:readline/promises';
 
 const args = process.argv.slice(2);
 const cmd = args[0];
-const opt = (name, def) => { const i = args.indexOf('--' + name); return i > 0 && args[i + 1] ? args[i + 1] : def; };
+const opt = (name, def) => { const i = args.indexOf('--' + name); return i > 0 && i + 1 < args.length ? args[i + 1] : def; }; // --codes "" = none
 const ask = async (q) => { const rl = readline.createInterface({ input: process.stdin, output: process.stdout }); const a = await rl.question(q); rl.close(); return a.trim(); };
 const site = (u) => (u || '').replace(/\/+$/, '');
 const fn = (base, name) => `${site(base)}/.netlify/functions/${name}`;
