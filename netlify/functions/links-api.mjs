@@ -2,9 +2,10 @@
  * netlify/functions/links-api.mjs
  * -----------------------------------------------------------------------
  * API for OTHER apps (e.g. the Grid Player) to read the links and mark one done.
- *   GET                          = { links: [{ id, name, link, createdAt, hasImage }], message? }, newest first
+ *   GET  (header X-Code: <code>) = { links: [{ id, name, link, createdAt, hasImage }], message?, needCode? }, newest first
  *                                  (the picture itself: GET /.netlify/functions/links?image=<id>)
- *                                  message = a note for the app to show when the list is empty (see PACE below)
+ *                                  message = a note for the app to show when the list is empty;
+ *                                  needCode = the app should ask for the person's code and send it (see PACE below)
  *   DELETE { id, code, stored }  = the Grid Player's Done button: writes a row in video_done (who = the code,
  *                                  the link, the name, stored = where the finished video is) and removes the link
  *   POST { code }                = "videos done" for that code: { who, count, payAmount, payFor, payPerVideo, currency, total, videos }
@@ -28,11 +29,18 @@ const PAY_FOR = 30;
 const CURRENCY = 'XAF';
 // CHANGE HERE: most finished videos listed in the "videos done" window (the count and the total always include all of them).
 const MAX_DONE_ROWS = 500;
-// CHANGE IN NETLIFY, not here (Site configuration -> Environment variables): the pace of the work. GET hands out only as
-// many links as fit: PACE_MAX_DONE videos done in the last PACE_HOURS hours, counted from the Done rows, oldest links first.
-// When none fit, the list is empty and PAUSE_MESSAGE comes with it. PACE_MAX_DONE not set = every link, as before.
-const PACE_MAX_DONE = Number(process.env.PACE_MAX_DONE) || 0;
-const PACE_HOURS = Number(process.env.PACE_HOURS) || 24;
+// CHANGE IN NETLIFY, not here (Site configuration -> Environment variables): the pace of the work, per person.
+//   PACE_PER_DAY      = "5-9": each person gets between 5 and 9 videos a day (not set = every link for everyone, as before)
+//   PACE_FAST_MINUTES = 10: someone who usually needs this long (or less) between two videos gets the top of the range
+//   PACE_SLOW_MINUTES = 40: this long (or more) gets the bottom; in between, in proportion. No history yet = the middle
+//   PACE_TZ           = "Africa/Douala": where "a day" starts and ends
+// Speed = the usual (median) time between one Done and the next of that person, over their last 30 Done rows, counting
+// only gaps under 3 hours (a break is not slowness). GET hands out the oldest links, as many as are left of today's number.
+const [PACE_MIN, PACE_MAX] = (process.env.PACE_PER_DAY || '').split('-').map(Number);
+const PACE_ON = PACE_MIN > 0 && PACE_MAX >= PACE_MIN;
+const PACE_FAST = Number(process.env.PACE_FAST_MINUTES) || 10;
+const PACE_SLOW = Number(process.env.PACE_SLOW_MINUTES) || 40;
+const PACE_TZ = process.env.PACE_TZ || 'Africa/Douala';
 const PAUSE_MESSAGE = process.env.PAUSE_MESSAGE || 'No videos available for you right now. New videos appear regularly, so check back in a while.';
 // CHANGE IN NETLIFY, not here: Site configuration -> Environment variables ->
 //   DONE_CODES = everyone's codes, separated by commas (for example: SARAH, BRYAN). Each person types their own.
@@ -44,7 +52,7 @@ const DONE_CODES = [...(process.env.DONE_CODES || '').split(','), process.env.DO
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, X-Code',
 };
 const reply = (body, status = 200) =>
   Response.json(body, { status, headers: { ...CORS, 'Cache-Control': 'no-store' } });
@@ -67,6 +75,28 @@ console.log('[API INIT] DATABASE client ready.');
 // The tables (and the one-time clear) live in netlify/shared/tables.mjs, shared with links.mjs.
 const ensureTable = tables(db, 'API');
 
+/** How many videos this person gets today: PACE_MIN..PACE_MAX, more for someone who usually works faster. */
+async function dailyNumber(who) {
+  const rows = await run(db.sql`SELECT done_at FROM video_done WHERE who = ${who} ORDER BY done_at DESC LIMIT 30`);
+  const gaps = [];
+  for (let i = 0; i + 1 < rows.length; i++) {
+    const min = (new Date(rows[i].done_at) - new Date(rows[i + 1].done_at)) / 60000;
+    if (min > 0 && min < 180) gaps.push(min);
+  }
+  if (gaps.length < 2) return Math.round((PACE_MIN + PACE_MAX) / 2); // not enough history yet: the middle
+  gaps.sort((a, b) => a - b);
+  const usual = gaps[Math.floor(gaps.length / 2)];
+  const fast = Math.min(1, Math.max(0, (PACE_SLOW - usual) / (PACE_SLOW - PACE_FAST))); // 1 = fast, 0 = slow
+  return Math.round(PACE_MIN + fast * (PACE_MAX - PACE_MIN));
+}
+/** Videos this person has done today (the day as in PACE_TZ). */
+async function doneToday(who) {
+  const [{ n }] = await run(db.sql`
+    SELECT count(*)::int AS n FROM video_done
+    WHERE who = ${who} AND (done_at AT TIME ZONE ${PACE_TZ})::date = (now() AT TIME ZONE ${PACE_TZ})::date`);
+  return n;
+}
+
 export default async (req) => {
   console.log('[API] Invoked. Method:', req.method);
   // Before a DELETE the browser first asks (OPTIONS) whether it is allowed: say yes.
@@ -77,10 +107,13 @@ export default async (req) => {
 
     if (req.method === 'GET') {
       let room = MAX_ROWS;
-      if (PACE_MAX_DONE) {
-        const [{ done }] = await run(db.sql`
-          SELECT count(*)::int AS done FROM video_done WHERE done_at > now() - ${PACE_HOURS} * interval '1 hour'`);
-        room = Math.max(0, Math.min(MAX_ROWS, PACE_MAX_DONE - done));
+      if (PACE_ON) {
+        const who = whoFor(req.headers.get('x-code'));
+        if (!who) {
+          if (req.headers.get('x-code')) await sleep(500); // slows down guessing
+          return reply({ links: [], needCode: true, message: req.headers.get('x-code') ? 'Wrong code. Type your code again.' : 'Type your code to see your videos.' });
+        }
+        room = Math.max(0, Math.min(MAX_ROWS, (await dailyNumber(who)) - (await doneToday(who))));
       }
       // The oldest links that fit (the ones worked on first), sent newest first like before
       const links = room ? await run(db.sql`
@@ -88,7 +121,7 @@ export default async (req) => {
           SELECT id, name, link, created_at AS "createdAt", (image IS NOT NULL) AS "hasImage" FROM video_links ORDER BY id LIMIT ${room}
         ) oldest ORDER BY id DESC`) : [];
       console.log('[API DATABASE] Sent', links.length, 'links (room:', room, ').');
-      return reply(links.length || !PACE_MAX_DONE ? { links } : { links, message: PAUSE_MESSAGE });
+      return reply(links.length || !PACE_ON ? { links } : { links, message: PAUSE_MESSAGE });
     }
 
     if (req.method === 'DELETE' || req.method === 'POST') {
