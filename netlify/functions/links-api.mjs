@@ -2,8 +2,9 @@
  * netlify/functions/links-api.mjs
  * -----------------------------------------------------------------------
  * API for OTHER apps (e.g. the Grid Player) to read the links and mark one done.
- *   GET                          = { links: [{ id, name, link, createdAt, hasImage }] }, newest first
+ *   GET                          = { links: [{ id, name, link, createdAt, hasImage }], message? }, newest first
  *                                  (the picture itself: GET /.netlify/functions/links?image=<id>)
+ *                                  message = a note for the app to show when the list is empty (see PACE below)
  *   DELETE { id, code, stored }  = the Grid Player's Done button: writes a row in video_done (who = the code,
  *                                  the link, the name, stored = where the finished video is) and removes the link
  *   POST { code }                = "videos done" for that code: { who, count, payAmount, payFor, payPerVideo, currency, total, videos }
@@ -27,6 +28,12 @@ const PAY_FOR = 30;
 const CURRENCY = 'XAF';
 // CHANGE HERE: most finished videos listed in the "videos done" window (the count and the total always include all of them).
 const MAX_DONE_ROWS = 500;
+// CHANGE IN NETLIFY, not here (Site configuration -> Environment variables): the pace of the work. GET hands out only as
+// many links as fit: PACE_MAX_DONE videos done in the last PACE_HOURS hours, counted from the Done rows, oldest links first.
+// When none fit, the list is empty and PAUSE_MESSAGE comes with it. PACE_MAX_DONE not set = every link, as before.
+const PACE_MAX_DONE = Number(process.env.PACE_MAX_DONE) || 0;
+const PACE_HOURS = Number(process.env.PACE_HOURS) || 24;
+const PAUSE_MESSAGE = process.env.PAUSE_MESSAGE || 'No videos available for you right now. New videos appear regularly, so check back in a while.';
 // CHANGE IN NETLIFY, not here: Site configuration -> Environment variables ->
 //   DONE_CODES = everyone's codes, separated by commas (for example: SARAH, BRYAN). Each person types their own.
 //   DONE_CODE  = the older single code; still accepted.
@@ -69,10 +76,19 @@ export default async (req) => {
     await ensureTable();
 
     if (req.method === 'GET') {
-      const links = await run(db.sql`
-        SELECT id, name, link, created_at AS "createdAt", (image IS NOT NULL) AS "hasImage" FROM video_links ORDER BY id DESC LIMIT ${MAX_ROWS}`);
-      console.log('[API DATABASE] Sent', links.length, 'links.');
-      return reply({ links });
+      let room = MAX_ROWS;
+      if (PACE_MAX_DONE) {
+        const [{ done }] = await run(db.sql`
+          SELECT count(*)::int AS done FROM video_done WHERE done_at > now() - ${PACE_HOURS} * interval '1 hour'`);
+        room = Math.max(0, Math.min(MAX_ROWS, PACE_MAX_DONE - done));
+      }
+      // The oldest links that fit (the ones worked on first), sent newest first like before
+      const links = room ? await run(db.sql`
+        SELECT * FROM (
+          SELECT id, name, link, created_at AS "createdAt", (image IS NOT NULL) AS "hasImage" FROM video_links ORDER BY id LIMIT ${room}
+        ) oldest ORDER BY id DESC`) : [];
+      console.log('[API DATABASE] Sent', links.length, 'links (room:', room, ').');
+      return reply(links.length || !PACE_MAX_DONE ? { links } : { links, message: PAUSE_MESSAGE });
     }
 
     if (req.method === 'DELETE' || req.method === 'POST') {
