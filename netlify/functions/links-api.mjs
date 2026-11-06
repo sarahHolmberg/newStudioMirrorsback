@@ -8,6 +8,7 @@
  *                                  needCode = the app should ask for the person's code and send it (see PACE below)
  *   DELETE { id, code, stored }  = the Grid Player's Done button: writes a row in video_done (who = the code,
  *                                  the link, the name, stored = where the finished video is) and removes the link
+ *                                  -> { deleted: 1, deadline? } (deadline = that person's date from DEADLINES)
  *   POST { code }                = "videos done" for that code: { who, count, payAmount, payFor, payPerVideo, currency, total, videos }
  *   POST (header X-Import: 1) { key, links?, done? } = load a backup in (tools/migrate.mjs); needs IMPORT_KEY. Anything
  *                                  already there is skipped, so running it twice is safe. -> { links: added, done: added }
@@ -47,6 +48,14 @@ const PAUSE_MESSAGE = process.env.PAUSE_MESSAGE || 'No videos available for you 
 // CHANGE IN NETLIFY, not here: IMPORT_KEY = a long secret of your own; switches on the import (tools/migrate.mjs).
 // Not set = import is off. Remove it again after moving the data.
 const IMPORT_KEY = process.env.IMPORT_KEY || '';
+// CHANGE IN NETLIFY, not here: DEADLINES = each person's deadline, "CODE=YYYY-MM-DD" separated by commas
+// (e.g. SARAH=2026-11-13, BRYAN=2026-12-01). The Grid Player shows it every time that person finishes a video.
+const DEADLINES = Object.fromEntries((process.env.DEADLINES || '').split(',').map((p) => p.split('=').map((x) => x.trim()))
+  .filter(([c, d]) => c && /^\d{4}-\d{2}-\d{2}$/.test(d || '')).map(([c, d]) => [c.toUpperCase(), d]));
+// CHANGE IN NETLIFY, not here: CLEAR_DONE_FOR = codes whose whole "videos done" history is erased ONCE (their count and
+// pay go back to 0), separated by commas. Each code is erased only once, even if the setting stays; to erase the same
+// code again later, add something after a # (e.g. SARAH#2). Cannot be undone.
+const CLEAR_DONE_FOR = (process.env.CLEAR_DONE_FOR || '').split(',').map((c) => c.trim().toUpperCase()).filter(Boolean);
 const MAX_IMPORT_DONE = 200; // done rows per import request
 // CHANGE IN NETLIFY, not here: Site configuration -> Environment variables ->
 //   DONE_CODES = everyone's codes, separated by commas (for example: SARAH, BRYAN). Each person types their own.
@@ -138,6 +147,20 @@ async function importBackup(body) {
   return reply({ links, done });
 }
 
+// The one-time erase of CLEAR_DONE_FOR: noted in app_resets, so a code is only ever erased once
+let clearedOnce = null;
+function clearDoneOnce() {
+  clearedOnce ??= (async () => {
+    for (const entry of CLEAR_DONE_FOR) {
+      const won = await run(db.sql`INSERT INTO app_resets (name) VALUES (${'clear-done:' + entry}) ON CONFLICT DO NOTHING RETURNING name`);
+      if (!won.length) continue;
+      const gone = await run(db.sql`DELETE FROM video_done WHERE who = ${entry.split('#')[0]} RETURNING id`);
+      console.warn('[API DATABASE] One-time erase of the videos done of', entry.split('#')[0], ':', gone.length, 'rows.');
+    }
+  })().catch((err) => { clearedOnce = null; throw err; });
+  return clearedOnce;
+}
+
 export default async (req) => {
   console.log('[API] Invoked. Method:', req.method);
   // Before a DELETE the browser first asks (OPTIONS) whether it is allowed: say yes.
@@ -145,6 +168,7 @@ export default async (req) => {
 
   try {
     await ensureTable();
+    await clearDoneOnce();
 
     if (req.method === 'GET') {
       let room = MAX_ROWS;
@@ -201,7 +225,7 @@ export default async (req) => {
         INSERT INTO video_done (who, link, name, stored) SELECT ${who}, link, name, ${stored} FROM gone RETURNING id`);
       console.log('[API DATABASE] Done by', who, ': removed link id', id, '| found:', rows.length > 0);
       if (!rows.length) return reply({ error: 'That link was already removed.' }, 404);
-      return reply({ deleted: 1 });
+      return reply(DEADLINES[who] ? { deleted: 1, deadline: DEADLINES[who] } : { deleted: 1 });
     }
 
     return reply({ error: 'Method not allowed.' }, 405);
