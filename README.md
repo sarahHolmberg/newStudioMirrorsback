@@ -47,3 +47,18 @@ video-vault/
    examples already included in that file.
 4. `js/app.js` requires **no changes** - it only talks to `DB.getVideos()`
    and `DB.addVideo()`, regardless of what's powering them underneath.
+
+## Moving the database to another site (tools/migrate.mjs)
+
+From a Codespace (or any computer with Node 18+), nothing to install:
+
+```bash
+# 1. Export: reads only. Type everyone's codes so "videos done" comes along too.
+node tools/migrate.mjs export --from https://studiomirrors.netlify.app --codes SARAH,BRYAN
+# 2. On the target site in Netlify: set IMPORT_KEY (a long secret of your own) and redeploy. Then:
+IMPORT_KEY=your-secret node tools/migrate.mjs import --to https://studio-mirrors.netlify.app
+# 3. Remove IMPORT_KEY from the target's Netlify settings again.
+```
+
+The backup lands in `backup/` (links.json/.csv, done.json/.csv, pictures/). It is your data: `backup/` is in .gitignore, never commit it.
+Running the import twice is safe: what is already there is skipped.

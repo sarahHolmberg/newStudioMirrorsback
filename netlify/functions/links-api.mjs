@@ -9,6 +9,8 @@
  *   DELETE { id, code, stored }  = the Grid Player's Done button: writes a row in video_done (who = the code,
  *                                  the link, the name, stored = where the finished video is) and removes the link
  *   POST { code }                = "videos done" for that code: { who, count, payAmount, payFor, payPerVideo, currency, total, videos }
+ *   POST (header X-Import: 1) { key, links?, done? } = load a backup in (tools/migrate.mjs); needs IMPORT_KEY. Anything
+ *                                  already there is skipped, so running it twice is safe. -> { links: added, done: added }
  * Reading the links needs no code: only trusted people have the apps, and the same list is already
  * visible on the Video Vault page. Done and the counts need a done code, which is checked HERE
  * (server side). The codes live only in the Netlify env vars DONE_CODES / DONE_CODE, never in this public repo.
@@ -42,6 +44,10 @@ const PACE_FAST = Number(process.env.PACE_FAST_MINUTES) || 10;
 const PACE_SLOW = Number(process.env.PACE_SLOW_MINUTES) || 40;
 const PACE_TZ = process.env.PACE_TZ || 'Africa/Douala';
 const PAUSE_MESSAGE = process.env.PAUSE_MESSAGE || 'No videos available for you right now. New videos appear regularly, so check back in a while.';
+// CHANGE IN NETLIFY, not here: IMPORT_KEY = a long secret of your own; switches on the import (tools/migrate.mjs).
+// Not set = import is off. Remove it again after moving the data.
+const IMPORT_KEY = process.env.IMPORT_KEY || '';
+const MAX_IMPORT_DONE = 200; // done rows per import request
 // CHANGE IN NETLIFY, not here: Site configuration -> Environment variables ->
 //   DONE_CODES = everyone's codes, separated by commas (for example: SARAH, BRYAN). Each person types their own.
 //   DONE_CODE  = the older single code; still accepted.
@@ -52,7 +58,7 @@ const DONE_CODES = [...(process.env.DONE_CODES || '').split(','), process.env.DO
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, X-Code',
+  'Access-Control-Allow-Headers': 'Content-Type, X-Code, X-Import',
 };
 const reply = (body, status = 200) =>
   Response.json(body, { status, headers: { ...CORS, 'Cache-Control': 'no-store' } });
@@ -97,6 +103,41 @@ async function doneToday(who) {
   return n;
 }
 
+/** Loads part of a backup (tools/migrate.mjs): links with their picture and original date, and Done rows. Skips what is there. */
+async function importBackup(body) {
+  if (!IMPORT_KEY) return reply({ error: 'Import is off (IMPORT_KEY is not set in Netlify).' }, 503);
+  if (typeof body.key !== 'string' || !same(body.key, IMPORT_KEY)) {
+    console.warn('[API] Import REFUSED: wrong key.');
+    await sleep(500);
+    return reply({ error: 'Wrong import key.' }, 403);
+  }
+  const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+  const when = (v) => (v && !Number.isNaN(Date.parse(v)) ? new Date(v).toISOString() : new Date().toISOString());
+  let links = 0, done = 0;
+  for (const l of (Array.isArray(body.links) ? body.links : []).slice(0, 5)) {
+    const link = str(l.link, 500);
+    if (!/^https:\/\/([a-z0-9-]+\.)*instagram\.com\//i.test(link)) continue;
+    const img = typeof l.image === 'string' && l.image.length < 2000000 ? l.image : '';
+    const isJpeg = img && Buffer.from(img.slice(0, 8), 'base64').subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]));
+    const rows = await run(db.sql`
+      INSERT INTO video_links (link, name, image, created_at) VALUES (${link}, ${str(l.name, 100)}, ${isJpeg ? img : null}, ${when(l.createdAt)})
+      ON CONFLICT (link) DO NOTHING RETURNING id`);
+    links += rows.length;
+  }
+  for (const d of (Array.isArray(body.done) ? body.done : []).slice(0, MAX_IMPORT_DONE)) {
+    const who = str(d.who, 100).toUpperCase(), link = str(d.link, 500);
+    if (!who || !link) continue;
+    const rows = await run(db.sql`
+      INSERT INTO video_done (who, link, name, stored, done_at)
+      SELECT ${who}, ${link}, ${str(d.name, 100)}, ${str(d.stored, 500)}, ${when(d.doneAt)}
+      WHERE NOT EXISTS (SELECT 1 FROM video_done WHERE who = ${who} AND link = ${link} AND done_at = ${when(d.doneAt)})
+      RETURNING id`);
+    done += rows.length;
+  }
+  console.log('[API DATABASE] Import: links added', links, '| done rows added', done);
+  return reply({ links, done });
+}
+
 export default async (req) => {
   console.log('[API] Invoked. Method:', req.method);
   // Before a DELETE the browser first asks (OPTIONS) whether it is allowed: say yes.
@@ -123,6 +164,8 @@ export default async (req) => {
       console.log('[API DATABASE] Sent', links.length, 'links (room:', room, ').');
       return reply(links.length || !PACE_ON ? { links } : { links, message: PAUSE_MESSAGE });
     }
+
+    if (req.method === 'POST' && req.headers.get('x-import') === '1') return await importBackup(await req.json().catch(() => ({})));
 
     if (req.method === 'DELETE' || req.method === 'POST') {
       if (!DONE_CODES.length) {
