@@ -16,6 +16,12 @@ export const payFor = (count) => Math.round((count * PAY_AMOUNT) / PAY_FOR);
 
 export const norm = (s) => (typeof s === 'string' ? s.trim().toUpperCase() : ''); // capitals and spaces do not matter
 
+/** A setting saved on the Code adder page (app_settings), or ''. */
+export async function getSetting(db, name) {
+  const [row] = await run(db.sql`SELECT value FROM app_settings WHERE name = ${name}`);
+  return row?.value || '';
+}
+
 /** The person with this code, or null: { code, name, deadline ('YYYY-MM-DD' or null), isAdmin } */
 export async function findPerson(db, code) {
   const c = norm(code);

@@ -6,6 +6,7 @@
  *   video_links : the Instagram links waiting (link, name, image = the target picture, profile = the profile picture)
  *   video_done  : one row per Done in the Grid Player (who, link, name, stored video link)
  *   people      : the codes (one per person), added on the Code adder page: name, deadline, admin (may open that page)
+ *   app_settings: settings saved on the Code adder page (name, value), e.g. INBOX_KEY
  *   app_resets  : which one-time clears have already run (see RESET below)
  * Not a function itself: it is outside netlify/functions, and Netlify bundles it into the two that import it.
  * -----------------------------------------------------------------------
@@ -56,6 +57,7 @@ export function tables(db, tag) {
             is_admin BOOLEAN NOT NULL DEFAULT false,
             created_at TIMESTAMPTZ NOT NULL DEFAULT now()
           )`);
+        await run(db.sql`CREATE TABLE IF NOT EXISTS app_settings (name TEXT PRIMARY KEY, value TEXT NOT NULL)`);
         await run(db.sql`
           CREATE TABLE IF NOT EXISTS app_resets (name TEXT PRIMARY KEY, done_at TIMESTAMPTZ NOT NULL DEFAULT now())`);
         if (RESET) {

@@ -47,6 +47,8 @@ async function load() {
     del.onclick = () => remove(p);
     actions.append(edit, del);
   });
+  const s = d.settings?.INBOX_KEY;
+  $('inboxState').textContent = s === 'netlify' ? 'Inbox key: set in Netlify (INBOX_KEY), that one is used.' : s === 'page' ? 'Inbox key: saved ✔' : 'Inbox key: not set yet: Send cannot reach the inbox.';
   console.log('[CODES] People:', d.people.length);
 }
 
@@ -88,6 +90,14 @@ $('personForm').addEventListener('submit', async (e) => {
   finally { $('saveBtn').disabled = false; }
 });
 $('clearBtn').onclick = () => fill(null);
+
+// 4. The inbox key: saved in the database, never shown again
+async function saveInboxKey(value) {
+  try { const r = await call('setting', { name: 'INBOX_KEY', value }); $('inboxKey').value = ''; setMsg(r.set ? 'Inbox key saved.' : 'Inbox key removed.'); await load(); }
+  catch (err) { setMsg(err.message, true); }
+}
+$('inboxForm').addEventListener('submit', (e) => { e.preventDefault(); if ($('inboxKey').value.trim()) saveInboxKey($('inboxKey').value); });
+$('inboxClear').onclick = () => { if (confirm('Remove the inbox key? Send will stop reaching the inbox.')) saveInboxKey(''); };
 
 // First use: no admin yet -> the page opens without a key, and the first person becomes the admin
 (async () => {

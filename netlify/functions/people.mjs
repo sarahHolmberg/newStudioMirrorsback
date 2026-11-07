@@ -11,12 +11,15 @@
  *   list                                     -> { people: [{ code, name, deadline, isAdmin, done, pay }], payAmount, payFor, currency }
  *   save   { code, name, deadline, isAdmin } -> add, or change the person with that code
  *   remove { code }                          -> remove the person (their videos done stay; the code stops working)
+ *   setting { name: "INBOX_KEY", value }     -> save a setting (empty value = remove it). list says which are set.
  * -----------------------------------------------------------------------
  */
 import crypto from 'node:crypto';
 import { getDatabase } from '@netlify/database';
 import { run, tables } from '../shared/tables.mjs';
-import { PAY_AMOUNT, PAY_FOR, CURRENCY, payFor, norm, findPerson } from '../shared/people.mjs';
+import { PAY_AMOUNT, PAY_FOR, CURRENCY, payFor, norm, findPerson, getSetting } from '../shared/people.mjs';
+
+const SETTINGS = ['INBOX_KEY']; // CHANGE HERE: the settings the page may save (the values are never sent back to the page)
 
 const ADMIN_KEY = process.env.ADMIN_KEY || '';
 const sha = (s) => crypto.createHash('sha256').update(s).digest();
@@ -56,7 +59,9 @@ export default async (req) => {
                (SELECT count(*)::int FROM video_done d WHERE d.who = p.code) AS done
         FROM people p ORDER BY p.created_at`);
       people.forEach((p) => (p.pay = payFor(p.done)));
-      return reply({ people, payAmount: PAY_AMOUNT, payFor: PAY_FOR, currency: CURRENCY });
+      const settings = {};
+      for (const n of SETTINGS) settings[n] = process.env[n] ? 'netlify' : (await getSetting(db, n)) ? 'page' : '';
+      return reply({ people, payAmount: PAY_AMOUNT, payFor: PAY_FOR, currency: CURRENCY, settings });
     }
 
     if (body.action === 'save') {
@@ -81,6 +86,16 @@ export default async (req) => {
       await run(db.sql`DELETE FROM people WHERE code = ${p.code}`);
       console.log('[PEOPLE] Removed one person (their videos done stay).');
       return reply({ removed: p.code });
+    }
+
+    if (body.action === 'setting') {
+      if (setup) return reply({ error: 'Add the first admin first.' }, 400);
+      if (!SETTINGS.includes(body.name)) return reply({ error: 'Unknown setting.' }, 400);
+      const value = typeof body.value === 'string' ? body.value.trim().slice(0, 500) : '';
+      if (value) await run(db.sql`INSERT INTO app_settings (name, value) VALUES (${body.name}, ${value}) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value`);
+      else await run(db.sql`DELETE FROM app_settings WHERE name = ${body.name}`);
+      console.log('[PEOPLE] Setting', body.name, value ? 'saved' : 'removed');
+      return reply({ setting: body.name, set: !!value });
     }
 
     return reply({ error: 'Unknown action.' }, 400);

@@ -53,6 +53,17 @@
           </table>
         </div>
         <p class="note">Removing a person keeps their videos done; only their code stops working.</p>
+
+        <!-- 4. Settings (the values are never shown again: only whether they are set) -->
+        <fieldset>
+          <legend>Settings</legend>
+          <form id="inboxForm">
+            <label>Inbox key <small>(the Grid Player's Send also sends the video link to the render inbox; this is that inbox's key)</small>
+              <input type="password" id="inboxKey" autocomplete="off" placeholder="paste the INBOX_KEY" /></label>
+            <p id="inboxState" class="small"></p>
+            <div class="row"><button type="submit">Save key</button><button type="button" id="inboxClear">Remove key</button></div>
+          </form>
+        </fieldset>
       </div>
     </div>
   </div>

@@ -24,3 +24,6 @@ body.codes { display: block; height: auto; min-height: 100vh; padding: 24px 12px
 .codes td button { margin-left: 4px; }
 .codes .past { color: #c00; font-weight: bold; }
 .codes .hidden { display: none; }
+.codes #inboxForm label { display: block; margin: 4px 0; }
+.codes #inboxForm input { display: block; width: 100%; margin-top: 2px; }
+.codes .small { font-size: 12px; color: #333; margin: 4px 0; }
