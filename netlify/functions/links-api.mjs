@@ -2,8 +2,8 @@
  * netlify/functions/links-api.mjs
  * -----------------------------------------------------------------------
  * API for OTHER apps (e.g. the Grid Player) to read the links and mark one done.
- *   GET  (header X-Code: <code>) = { links: [{ id, name, link, createdAt, hasImage }], message?, needCode? }, newest first
- *                                  (the picture itself: GET /.netlify/functions/links?image=<id>)
+ *   GET  (header X-Code: <code>) = { links: [{ id, name, link, createdAt, hasImage, hasProfile }], message?, needCode? }, newest first
+ *                                  (the pictures: GET /.netlify/functions/links?image=<id> / ?profile=<id>)
  *                                  message = a note for the app to show when the list is empty;
  *                                  needCode = the app should ask for the person's code and send it (see PACE below)
  *   DELETE { id, code, stored }  = the Grid Player's Done button: writes a row in video_done (who = the code,
@@ -126,10 +126,10 @@ async function importBackup(body) {
   for (const l of (Array.isArray(body.links) ? body.links : []).slice(0, 5)) {
     const link = str(l.link, 500);
     if (!/^https:\/\/([a-z0-9-]+\.)*instagram\.com\//i.test(link)) continue;
-    const img = typeof l.image === 'string' && l.image.length < 2000000 ? l.image : '';
-    const isJpeg = img && Buffer.from(img.slice(0, 8), 'base64').subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]));
+    const jpeg = (v) => (typeof v === 'string' && v.length < 2000000 && Buffer.from(v.slice(0, 8), 'base64').subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff])) ? v : null);
     const rows = await run(db.sql`
-      INSERT INTO video_links (link, name, image, created_at) VALUES (${link}, ${str(l.name, 100)}, ${isJpeg ? img : null}, ${when(l.createdAt)})
+      INSERT INTO video_links (link, name, image, profile, created_at)
+      VALUES (${link}, ${str(l.name, 100)}, ${jpeg(l.image)}, ${jpeg(l.profile)}, ${when(l.createdAt)})
       ON CONFLICT (link) DO NOTHING RETURNING id`);
     links += rows.length;
   }
@@ -183,7 +183,8 @@ export default async (req) => {
       // The oldest links that fit (the ones worked on first), sent newest first like before
       const links = room ? await run(db.sql`
         SELECT * FROM (
-          SELECT id, name, link, created_at AS "createdAt", (image IS NOT NULL) AS "hasImage" FROM video_links ORDER BY id LIMIT ${room}
+          SELECT id, name, link, created_at AS "createdAt", (image IS NOT NULL) AS "hasImage", (profile IS NOT NULL) AS "hasProfile"
+          FROM video_links ORDER BY id LIMIT ${room}
         ) oldest ORDER BY id DESC`) : [];
       console.log('[API DATABASE] Sent', links.length, 'links (room:', room, ').');
       return reply(links.length || !PACE_ON ? { links } : { links, message: PAUSE_MESSAGE });

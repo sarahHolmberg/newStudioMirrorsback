@@ -3,8 +3,9 @@
  * -----------------------------------------------------------------------
  * Instagram links (+ a name + a picture) stored in the Netlify DATABASE.
  *   GET    ?before=<id>            = next page of links, newest first
- *   GET    ?image=<id>             = the picture of one link (JPEG)
- *   POST   { link, name, image }   = save a new link; all three are required (image = JPEG, base64)
+ *   GET    ?image=<id>             = the target picture of one link (JPEG): who the video is about
+ *   GET    ?profile=<id>           = the profile picture of one link (JPEG)
+ *   POST   { link, name, image, profile } = save a new link; all four are required (the pictures = JPEG, base64)
  *   DELETE { ids, code }           = remove clipped links; needs the scissors code
  * The scissors code is checked HERE (server side). The page never contains it.
  * Pictures are kept as base64 text in the DATABASE and are NOT sent with the
@@ -64,22 +65,23 @@ export default async (req) => {
     if (req.method === 'GET') {
       const params = new URL(req.url).searchParams;
 
-      const imageId = Number(params.get('image'));
-      if (imageId) {
-        const [row] = await run(db.sql`SELECT image FROM video_links WHERE id = ${imageId}`);
-        if (!row?.image) {
-          console.warn('[LINKS] No picture for id:', imageId);
+      const imageId = Number(params.get('image')), profileId = Number(params.get('profile'));
+      if (imageId || profileId) {
+        const [row] = await run(db.sql`SELECT image, profile FROM video_links WHERE id = ${imageId || profileId}`);
+        const pic = imageId ? row?.image : row?.profile;
+        if (!pic) {
+          console.warn('[LINKS] No', imageId ? 'picture' : 'profile picture', 'for id:', imageId || profileId);
           return Response.json({ error: 'No picture.' }, { status: 404 });
         }
-        console.log('[LINKS DATABASE] Sending picture for id:', imageId);
-        return new Response(Buffer.from(row.image, 'base64'), {
+        console.log('[LINKS DATABASE] Sending', imageId ? 'picture' : 'profile picture', 'for id:', imageId || profileId);
+        return new Response(Buffer.from(pic, 'base64'), {
           headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, max-age=3600' },
         });
       }
 
       const before = Number(params.get('before')) || MAX_ID;
       const rows = await run(db.sql`
-        SELECT id, link, name, (image IS NOT NULL) AS has_image FROM video_links
+        SELECT id, link, name, (image IS NOT NULL) AS has_image, (profile IS NOT NULL) AS has_profile FROM video_links
         WHERE id < ${before} ORDER BY id DESC LIMIT ${PAGE_SIZE + 1}`);
       const hasMore = rows.length > PAGE_SIZE; // we asked for one extra row to know
       const links = rows.slice(0, PAGE_SIZE);
@@ -99,6 +101,11 @@ export default async (req) => {
         console.warn('[LINKS] Rejected: picture missing, not a JPEG, or too big.');
         return Response.json({ error: 'A picture is required (JPEG, not too big).' }, { status: 400 });
       }
+      const profile = cleanImage(body.profile);
+      if (!profile) {
+        console.warn('[LINKS] Rejected: profile picture missing, not a JPEG, or too big.');
+        return Response.json({ error: 'A profile picture is required (JPEG, not too big).' }, { status: 400 });
+      }
       const name = typeof body.name === 'string' ? body.name.trim().slice(0, MAX_NAME_LENGTH) : '';
       if (!name) {
         console.warn('[LINKS] Rejected: no name.');
@@ -106,11 +113,12 @@ export default async (req) => {
       }
       // Same link again: only fills in a missing name or picture, never overwrites.
       const rows = await run(db.sql`
-        INSERT INTO video_links (link, name, image) VALUES (${link}, ${name}, ${image})
+        INSERT INTO video_links (link, name, image, profile) VALUES (${link}, ${name}, ${image}, ${profile})
         ON CONFLICT (link) DO UPDATE SET
           name = CASE WHEN video_links.name = '' THEN EXCLUDED.name ELSE video_links.name END,
-          image = COALESCE(video_links.image, EXCLUDED.image)
-        WHERE (video_links.name = '' AND EXCLUDED.name <> '') OR video_links.image IS NULL
+          image = COALESCE(video_links.image, EXCLUDED.image),
+          profile = COALESCE(video_links.profile, EXCLUDED.profile)
+        WHERE (video_links.name = '' AND EXCLUDED.name <> '') OR video_links.image IS NULL OR video_links.profile IS NULL
         RETURNING id`);
       const added = rows.length > 0;
       console.log('[LINKS DATABASE] Write done. Added:', added, '| has name:', !!name, '| picture chars:', image.length);

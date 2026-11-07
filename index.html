@@ -75,17 +75,19 @@
     </form>
   </dialog>
 
-  <!-- Step 2 of adding a video: after Submit, the picture. Then name + link + picture are sent together. -->
+  <!-- Steps 2 and 3 of adding a video: after Submit, the target picture, then the profile picture.
+       Then name + link + both pictures are sent together. -->
   <dialog id="picDialog">
     <form id="picForm">
-      <p><strong>Step 2: add a picture</strong></p>
+      <p><strong id="picTitle">Step 2: the target picture</strong></p>
+      <p id="picAbout" class="pic-hint"></p>
       <p id="picWhat" class="pic-what"></p>
       <label for="picInput">Choose a picture or take a photo:</label>
       <input type="file" id="picInput" accept="image/*" />
       <p class="pic-hint">…or copy a picture and paste it here (Ctrl+V).</p>
       <img id="picPreview" class="hidden" alt="The picture that will be sent" />
       <p id="picMsg" class="err" role="alert"></p>
-      <button type="submit" id="picSend" disabled>Send</button>
+      <button type="submit" id="picSend" disabled>Next ▸</button>
       <button type="button" id="picBack">Back</button>
     </form>
   </dialog>

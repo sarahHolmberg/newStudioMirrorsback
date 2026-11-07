@@ -3,7 +3,7 @@
  * -----------------------------------------------------------------------
  * The DATABASE tables, made in ONE place for both functions (links.mjs = Video Vault,
  * links-api.mjs = Grid Player), so they always agree:
- *   video_links : the Instagram links waiting (link, name, picture)
+ *   video_links : the Instagram links waiting (link, name, image = the target picture, profile = the profile picture)
  *   video_done  : one row per Done in the Grid Player (who, link, name, stored video link)
  *   app_resets  : which one-time clears have already run (see RESET below)
  * Not a function itself: it is outside netlify/functions, and Netlify bundles it into the two that import it.
@@ -36,6 +36,7 @@ export function tables(db, tag) {
           )`);
         await run(db.sql`ALTER TABLE video_links ADD COLUMN IF NOT EXISTS name TEXT NOT NULL DEFAULT ''`);
         await run(db.sql`ALTER TABLE video_links ADD COLUMN IF NOT EXISTS image TEXT`);
+        await run(db.sql`ALTER TABLE video_links ADD COLUMN IF NOT EXISTS profile TEXT`);
         await run(db.sql`
           CREATE TABLE IF NOT EXISTS video_done (
             id SERIAL PRIMARY KEY,

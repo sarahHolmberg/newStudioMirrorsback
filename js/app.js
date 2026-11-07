@@ -118,6 +118,16 @@ function nameRow(item) {
     dl.setAttribute('aria-label', 'Download picture');
     row.appendChild(dl);
   }
+  if (item.has_profile) {
+    const pf = document.createElement('a');
+    pf.className = 'ico';
+    pf.href = DB.profileUrl(item.id);
+    pf.download = (item.name || 'profile') + ' (profile).jpg';
+    pf.textContent = '👤';
+    pf.title = 'Download profile picture';
+    pf.setAttribute('aria-label', 'Download profile picture');
+    row.appendChild(pf);
+  }
   return row;
 }
 
@@ -134,7 +144,7 @@ function appendLinks(links) {
 
     const body = document.createElement('div'); // name row + link
     body.className = 'item';
-    if (item.name || item.has_image) body.appendChild(nameRow(item));
+    if (item.name || item.has_image || item.has_profile) body.appendChild(nameRow(item));
 
     const a = document.createElement('a');
     a.href = item.link;
@@ -173,7 +183,27 @@ const picWhat = document.getElementById('picWhat');
 const picPreview = document.getElementById('picPreview');
 const picMsg = document.getElementById('picMsg');
 const picSend = document.getElementById('picSend');
-let picFile = null; // the picture chosen or pasted in step 2
+const picTitle = document.getElementById('picTitle');
+const picAbout = document.getElementById('picAbout');
+// Step 2 = the target picture (who the video is about), step 3 = the profile picture. Both are kept until Send.
+const PIC_STEPS = {
+  2: { key: 'target', title: 'Step 2: the target picture', about: 'The picture that shows who the video is about.', button: 'Next ▸' },
+  3: { key: 'profile', title: 'Step 3: the profile picture', about: 'Their profile picture.', button: 'Send' },
+};
+let picStep = 2, pics = { target: null, profile: null };
+
+/** Shows step 2 or 3, with the picture already chosen for it (if any). */
+function showPicStep(step) {
+  picStep = step;
+  const s = PIC_STEPS[step], file = pics[s.key];
+  picTitle.textContent = s.title; picAbout.textContent = s.about; picSend.textContent = s.button;
+  picInput.value = ''; picMsg.textContent = '';
+  if (picPreview.src) URL.revokeObjectURL(picPreview.src);
+  if (file) { picPreview.src = URL.createObjectURL(file); picPreview.classList.remove('hidden'); }
+  else { picPreview.removeAttribute('src'); picPreview.classList.add('hidden'); }
+  picSend.disabled = !file;
+  console.log('[ADD] Step', step + ':', s.key, 'picture.');
+}
 
 function isInstagramLink(raw) {
   try {
@@ -190,23 +220,22 @@ addBtn.addEventListener('click', () => {
   if (!name) { setMsg('Please type the name.', true); return nameInput.focus(); }
   if (!isInstagramLink(link)) { setMsg('Please paste a valid Instagram link (https://www.instagram.com/...).', true); return linkInput.focus(); }
   setMsg('', false);
-  // Step 2: the picture
-  picFile = null; picInput.value = ''; picPreview.classList.add('hidden'); picPreview.removeAttribute('src');
-  picMsg.textContent = ''; picSend.disabled = true;
+  // Step 2: the target picture (then step 3: the profile picture)
+  pics = { target: null, profile: null };
   picWhat.textContent = name + ' · ' + link;
+  showPicStep(2);
   picDialog.showModal();
-  console.log('[ADD] Step 2: asking for the picture.');
 });
 
-/** Shows the chosen or pasted picture and allows Send. */
+/** Shows the chosen or pasted picture (for this step) and allows Next / Send. */
 function setPicture(file) {
   if (!file || !file.type.startsWith('image/')) { picMsg.textContent = 'That is not a picture.'; return; }
-  picFile = file;
+  pics[PIC_STEPS[picStep].key] = file;
   if (picPreview.src) URL.revokeObjectURL(picPreview.src);
   picPreview.src = URL.createObjectURL(file);
   picPreview.classList.remove('hidden');
   picMsg.textContent = ''; picSend.disabled = false;
-  console.log('[ADD] Picture ready:', file.name || '(pasted)', '| bytes:', file.size);
+  console.log('[ADD]', PIC_STEPS[picStep].key, 'picture ready:', file.name || '(pasted)', '| bytes:', file.size);
 }
 picInput.addEventListener('change', () => picInput.files[0] && setPicture(picInput.files[0]));
 document.addEventListener('paste', (e) => {
@@ -216,20 +245,22 @@ document.addEventListener('paste', (e) => {
   e.preventDefault();
   setPicture(item.getAsFile());
 });
-document.getElementById('picBack').addEventListener('click', () => picDialog.close());
+// Back: from step 3 to step 2 (the target picture is still there), from step 2 out
+document.getElementById('picBack').addEventListener('click', () => (picStep === 3 ? showPicStep(2) : picDialog.close()));
 
-// Send: name + link + picture go to the server together, in one request
+// Next (step 2) goes to the profile picture; Send (step 3): name + link + both pictures go to the server together, in one request
 picForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  if (!picFile) return;
+  if (picStep === 2) { if (pics.target) showPicStep(3); return; }
+  if (!pics.target || !pics.profile) return;
   const link = linkInput.value.trim();
   const name = nameInput.value.trim();
   picSend.disabled = true; addBtn.disabled = true;
   picMsg.textContent = 'Sending…';
   try {
-    const image = await toJpegBase64(picFile);
-    console.log('[ADD] Picture shrunk. base64 chars:', image.length);
-    const { added } = await DB.addVideo(link, name, image);
+    const image = await toJpegBase64(pics.target), profile = await toJpegBase64(pics.profile);
+    console.log('[ADD] Pictures shrunk. base64 chars:', image.length, '+', profile.length);
+    const { added } = await DB.addVideo(link, name, image, profile);
     picDialog.close();
     linkInput.value = '';
     nameInput.value = '';

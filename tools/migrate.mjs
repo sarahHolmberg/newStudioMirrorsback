@@ -8,7 +8,7 @@
  *   1. Export (reads only, changes nothing):
  *        node tools/migrate.mjs export --from https://studiomirrors.netlify.app --codes SARAH,BRYAN
  *      -> backup/links.json + links.csv   every waiting link (name, Instagram link, date, picture file)
- *         backup/pictures/<id>.jpg        the pictures
+ *         backup/pictures/<id>.jpg        the target pictures (and <id>-profile.jpg, the profile pictures)
  *         backup/done.json + done.csv     the "videos done" rows of those codes (the website only shows them per code)
  *
  *   2. Import (needs IMPORT_KEY set in the target's Netlify settings, then a redeploy):
@@ -57,17 +57,21 @@ async function exportFrom(from, out, codes) {
   let pics = 0;
   for (const l of links) {
     l.createdAt = dates[l.id] || null;
-    l.picture = null;
+    l.picture = l.profile = null;
     if (l.has_image) {
       const res = await fetch(fn(from, 'links') + `?image=${l.id}`);
       if (res.ok) { l.picture = `pictures/${l.id}.jpg`; fs.writeFileSync(path.join(out, l.picture), Buffer.from(await res.arrayBuffer())); pics++; }
     }
+    if (l.has_profile) { // an older site has no profile pictures
+      const res = await fetch(fn(from, 'links') + `?profile=${l.id}`);
+      if (res.ok) { l.profile = `pictures/${l.id}-profile.jpg`; fs.writeFileSync(path.join(out, l.profile), Buffer.from(await res.arrayBuffer())); pics++; }
+    }
     process.stdout.write(`\r  links: ${links.indexOf(l) + 1}/${links.length}, pictures: ${pics}`);
   }
   console.log();
-  const keep = links.map(({ id, name, link, createdAt, picture }) => ({ id, name, link, createdAt, picture }));
+  const keep = links.map(({ id, name, link, createdAt, picture, profile }) => ({ id, name, link, createdAt, picture, profile }));
   fs.writeFileSync(path.join(out, 'links.json'), JSON.stringify(keep, null, 2));
-  writeCsv(path.join(out, 'links.csv'), [['id', 'name', 'Instagram link', 'added', 'picture'], ...keep.map((l) => [l.id, l.name, l.link, l.createdAt, l.picture])]);
+  writeCsv(path.join(out, 'links.csv'), [['id', 'name', 'Instagram link', 'added', 'picture', 'profile picture'], ...keep.map((l) => [l.id, l.name, l.link, l.createdAt, l.picture, l.profile])]);
 
   // Videos done: only per code
   const done = [];
@@ -91,8 +95,8 @@ async function importTo(to, from, key) {
   const send = (body) => getJson(fn(to, 'links-api'), { method: 'POST', headers: { 'X-Import': '1' }, body: JSON.stringify({ key, ...body }) });
   let addedLinks = 0, addedDone = 0;
   for (const [i, l] of links.entries()) { // one link per request: a picture can be over a megabyte
-    const image = l.picture && fs.existsSync(path.join(from, l.picture)) ? fs.readFileSync(path.join(from, l.picture)).toString('base64') : null;
-    addedLinks += (await send({ links: [{ link: l.link, name: l.name, createdAt: l.createdAt, image }] })).links;
+    const b64 = (f) => (f && fs.existsSync(path.join(from, f)) ? fs.readFileSync(path.join(from, f)).toString('base64') : null);
+    addedLinks += (await send({ links: [{ link: l.link, name: l.name, createdAt: l.createdAt, image: b64(l.picture), profile: b64(l.profile) }] })).links;
     process.stdout.write(`\r  links: ${i + 1}/${links.length} (new: ${addedLinks})`);
   }
   console.log();

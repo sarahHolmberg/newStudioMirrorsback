@@ -49,8 +49,8 @@ for (const file of fs.readdirSync(path.join(ROOT, 'netlify/functions'))) {
 // ---- Sample data: links with pictures (the oldest first), and a few Done rows for TEST so Videos done shows something ----
 await FUNCTIONS['links-api'].modern(new Request('http://localhost/')); // makes the tables
 for (const [i, [link, name]] of LINKS.entries()) {
-  await pg.query('INSERT INTO video_links (link, name, image, created_at) VALUES ($1, $2, $3, now() - $4 * interval \'1 hour\')',
-    [link, name, PICTURES[i % PICTURES.length], LINKS.length - i]);
+  await pg.query('INSERT INTO video_links (link, name, image, profile, created_at) VALUES ($1, $2, $3, $4, now() - $5 * interval \'1 hour\')',
+    [link, name, PICTURES[i % PICTURES.length], PICTURES[(i + 1) % PICTURES.length], LINKS.length - i]);
 }
 for (const [i, minutes] of [30, 18, 6].entries()) {
   await pg.query('INSERT INTO video_done (who, link, name, stored, done_at) VALUES ($1, $2, $3, $4, now() - interval \'1 day\' - $5 * interval \'1 minute\')',
