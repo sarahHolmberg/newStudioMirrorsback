@@ -22,14 +22,11 @@
 import crypto from 'node:crypto';
 import { getDatabase } from '@netlify/database';
 import { run, tables } from '../shared/tables.mjs';
+import { PAY_AMOUNT, PAY_FOR, CURRENCY, payFor, norm, findPerson } from '../shared/people.mjs';
 
 // CHANGE HERE: most links one request can return (newest first).
 const MAX_ROWS = 500;
-// CHANGE HERE: the pay: PAY_FOR this many videos (17 000 XAF for 30 videos = 566.67 XAF a video).
-// The total is rounded only at the end, so 30 videos is exactly 17 000.
-const PAY_AMOUNT = 17000;
-const PAY_FOR = 30;
-const CURRENCY = 'XAF';
+// The pay (17 000 XAF for 30 videos) is in netlify/shared/people.mjs, shared with the Code adder page.
 // CHANGE HERE: most finished videos listed in the "videos done" window (the count and the total always include all of them).
 const MAX_DONE_ROWS = 500;
 // CHANGE IN NETLIFY, not here (Site configuration -> Environment variables): the pace of the work, per person.
@@ -72,16 +69,16 @@ const CORS = {
 const reply = (body, status = 200) =>
   Response.json(body, { status, headers: { ...CORS, 'Cache-Control': 'no-store' } });
 
-const norm = (s) => s.trim().toUpperCase(); // capitals and spaces around the code do not matter
 const sha = (s) => crypto.createHash('sha256').update(s).digest();
 const same = (a, b) => crypto.timingSafeEqual(sha(a), sha(b)); // constant-time compare
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 /** The code as it is stored (= who did it), or null if it is not one of the codes. Checks every code, so timing gives nothing away. */
-function whoFor(code) {
+/** The code as stored (= who did it), or null: the Netlify setting DONE_CODES first, then the people table (Code adder page). */
+async function whoFor(code) {
   if (typeof code !== 'string' || !code.trim()) return null;
   let who = null;
-  for (const c of DONE_CODES) if (same(norm(code), c)) who = c;
-  return who;
+  for (const c of DONE_CODES) if (same(norm(code), c)) who = c; // checks every code, so timing gives nothing away
+  return who || (await findPerson(db, code))?.code || null;
 }
 
 const db = getDatabase();
@@ -173,7 +170,7 @@ export default async (req) => {
     if (req.method === 'GET') {
       let room = MAX_ROWS;
       if (PACE_ON) {
-        const who = whoFor(req.headers.get('x-code'));
+        const who = await whoFor(req.headers.get('x-code'));
         if (!who) {
           if (req.headers.get('x-code')) await sleep(500); // slows down guessing
           return reply({ links: [], needCode: true, message: req.headers.get('x-code') ? 'Wrong code. Type your code again.' : 'Type your code to see your videos.' });
@@ -193,12 +190,8 @@ export default async (req) => {
     if (req.method === 'POST' && req.headers.get('x-import') === '1') return await importBackup(await req.json().catch(() => ({})));
 
     if (req.method === 'DELETE' || req.method === 'POST') {
-      if (!DONE_CODES.length) {
-        console.error('[API] REFUSED: env var DONE_CODES / DONE_CODE is not set in Netlify.');
-        return reply({ error: 'Done is not set up on the website yet (DONE_CODES is missing in Netlify).' }, 503);
-      }
       const body = await req.json().catch(() => ({}));
-      const who = whoFor(body.code);
+      const who = await whoFor(body.code);
       if (!who) {
         console.warn('[API] REFUSED: wrong code (code not logged).');
         await sleep(500); // slows down guessing
@@ -212,7 +205,7 @@ export default async (req) => {
         console.log('[API DATABASE] Videos done for', who, ':', count);
         return reply({
           who, count, payAmount: PAY_AMOUNT, payFor: PAY_FOR, payPerVideo: Math.round((PAY_AMOUNT / PAY_FOR) * 100) / 100,
-          currency: CURRENCY, total: Math.round((count * PAY_AMOUNT) / PAY_FOR), videos,
+          currency: CURRENCY, total: payFor(count), videos,
         });
       }
 
@@ -226,7 +219,8 @@ export default async (req) => {
         INSERT INTO video_done (who, link, name, stored) SELECT ${who}, link, name, ${stored} FROM gone RETURNING id`);
       console.log('[API DATABASE] Done by', who, ': removed link id', id, '| found:', rows.length > 0);
       if (!rows.length) return reply({ error: 'That link was already removed.' }, 404);
-      return reply(DEADLINES[who] ? { deleted: 1, deadline: DEADLINES[who] } : { deleted: 1 });
+      const deadline = DEADLINES[who] || (await findPerson(db, who))?.deadline; // the Netlify setting, else the Code adder page
+      return reply(deadline ? { deleted: 1, deadline } : { deleted: 1 });
     }
 
     return reply({ error: 'Method not allowed.' }, 405);

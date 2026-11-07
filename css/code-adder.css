@@ -1,0 +1,26 @@
+/* The Code adder page (code-adder/index.html): the XP window from style.css, wider, at the top */
+body.codes { display: block; height: auto; min-height: 100vh; padding: 24px 12px; box-sizing: border-box; }
+.codes .window { width: auto; max-width: 760px; margin: 0 auto; }
+.codes .window-body { padding: 12px; font-size: 13px; }
+.codes .row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.codes input[type=text], .codes input[type=password], .codes input[type=date] { border: 2px inset #999; padding: 4px; font: inherit; box-sizing: border-box; }
+.codes #keyInput { flex: 1; min-width: 160px; }
+.codes fieldset { margin: 10px 0; border: 1px solid #a0a0a0; padding: 8px 10px 10px; }
+.codes legend { color: #0046d5; font-weight: bold; padding: 0 4px; }
+.codes #personForm label { display: block; margin: 6px 0; }
+.codes #personForm label input[type=text], .codes #personForm label input[type=date] { display: block; width: 100%; margin-top: 2px; }
+.codes #personForm label.tick input { margin-right: 4px; }
+.codes small { color: #555; }
+.codes .note { color: #333; background: #fff8d6; border: 1px solid #e0c96a; padding: 6px 8px; }
+.codes #msg { min-height: 1em; margin: 6px 0; }
+.codes .err { color: #c00; }
+.codes .ok-msg { color: #2e7d32; }
+.codes .pay { margin: 10px 0 4px; font-weight: bold; }
+.codes .tablewrap { overflow-x: auto; background: #fff; border: 2px inset #999; }
+.codes table { width: 100%; border-collapse: collapse; }
+.codes th, .codes td { padding: 5px 8px; border-bottom: 1px solid #ddd; text-align: left; white-space: nowrap; }
+.codes th { background: #ece9d8; font-weight: bold; }
+.codes td.code { font-family: "Lucida Console", Consolas, monospace; }
+.codes td button { margin-left: 4px; }
+.codes .past { color: #c00; font-weight: bold; }
+.codes .hidden { display: none; }

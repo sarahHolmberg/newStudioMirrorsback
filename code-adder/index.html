@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>Code adder - Studio Mirrors</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/code-adder.css" />
+</head>
+<body class="codes">
+  <!-- The people and their codes, in the database (netlify/functions/people.mjs). Values are inserted as text only. -->
+  <div class="window">
+    <div class="title-bar"><span>🔑 Code adder</span><div class="title-buttons"><span>_</span><span>□</span><span>✕</span></div></div>
+    <div class="window-body">
+
+      <!-- 1. The admin key -->
+      <form id="keyForm" class="row">
+        <label for="keyInput">Admin key:</label>
+        <input type="password" id="keyInput" autocomplete="off" placeholder="your admin code" />
+        <button type="submit">Open</button>
+      </form>
+      <p id="setupNote" class="note hidden">
+        <b>First use:</b> there is no admin yet. Add yourself below with <b>admin</b> ticked: from then on <b>your code is the key</b> for this page.
+      </p>
+      <p id="msg" role="status"></p>
+
+      <div id="main" class="hidden">
+        <!-- 2. Add or change a person -->
+        <fieldset>
+          <legend id="formTitle">Add a person</legend>
+          <form id="personForm">
+            <label>Code <small>(what they type in the Grid Player; capitals do not matter)</small>
+              <input type="text" id="code" maxlength="40" autocomplete="off" placeholder="e.g. JEANLEGBANE" required /></label>
+            <label>Name <small>(who it is, for you)</small>
+              <input type="text" id="name" maxlength="100" autocomplete="off" placeholder="e.g. Jean Legbane" /></label>
+            <label>Deadline <small>(optional: shown in red every time they finish a video)</small>
+              <input type="date" id="deadline" /></label>
+            <label class="tick"><input type="checkbox" id="isAdmin" /> Admin <small>(their code also opens this page)</small></label>
+            <div class="row">
+              <button type="submit" id="saveBtn">Save</button>
+              <button type="button" id="clearBtn">New person</button>
+            </div>
+          </form>
+        </fieldset>
+
+        <!-- 3. Everyone -->
+        <p class="pay" id="payRule"></p>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Code</th><th>Name</th><th>Deadline</th><th>Videos done</th><th>Pay</th><th>Admin</th><th></th></tr></thead>
+            <tbody id="people"></tbody>
+          </table>
+        </div>
+        <p class="note">Removing a person keeps their videos done; only their code stops working.</p>
+      </div>
+    </div>
+  </div>
+  <script src="/js/code-adder.js"></script>
+</body>
+</html>

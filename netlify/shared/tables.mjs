@@ -5,6 +5,7 @@
  * links-api.mjs = Grid Player), so they always agree:
  *   video_links : the Instagram links waiting (link, name, image = the target picture, profile = the profile picture)
  *   video_done  : one row per Done in the Grid Player (who, link, name, stored video link)
+ *   people      : the codes (one per person), added on the Code adder page: name, deadline, admin (may open that page)
  *   app_resets  : which one-time clears have already run (see RESET below)
  * Not a function itself: it is outside netlify/functions, and Netlify bundles it into the two that import it.
  * -----------------------------------------------------------------------
@@ -47,6 +48,14 @@ export function tables(db, tag) {
             done_at TIMESTAMPTZ NOT NULL DEFAULT now()
           )`);
         await run(db.sql`CREATE INDEX IF NOT EXISTS video_done_who ON video_done (who)`);
+        await run(db.sql`
+          CREATE TABLE IF NOT EXISTS people (
+            code TEXT PRIMARY KEY,
+            name TEXT NOT NULL DEFAULT '',
+            deadline DATE,
+            is_admin BOOLEAN NOT NULL DEFAULT false,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+          )`);
         await run(db.sql`
           CREATE TABLE IF NOT EXISTS app_resets (name TEXT PRIMARY KEY, done_at TIMESTAMPTZ NOT NULL DEFAULT now())`);
         if (RESET) {

@@ -76,3 +76,15 @@ Test codes: Done / Videos done = `TEST` or `ANNA`, scissors = `scissors`, dashbo
 Switch a setting on for a test by putting it in front, e.g. `PACE_PER_DAY=5-9 npm run preview`. Ctrl+C stops it; every start is fresh.
 
 **Grid Player against the preview:** in the Grid Player's ⋯ menu choose **Links from → Dev**. On your own computer that is `localhost:8888`. In a Codespace, make port 8888 **Public** (Ports tab → right-click → Port visibility) and put its address in `SERVERS.dev` in the Grid Player's `app/js/links.js`.
+
+## Codes (people): the Code adder page
+
+Open **/code-adder/** on the site (for example https://studio-mirrors.netlify.app/code-adder/).
+
+- **First use:** there is no admin yet, so the page opens without a key. Add yourself with your code: you become the admin,
+  and from then on **your code is the key** for this page. Do this straight after the page goes live.
+- Then: type your code as the admin key → **Open**. Add a person (code, name, optional deadline, admin yes/no) → **Save**.
+  The code works at once for Done, Videos done, the pay and the pace. **Edit** changes a person, **Remove** stops their code
+  (their videos done stay).
+- The codes live in the database (table `people`). Codes in the Netlify setting `DONE_CODES` keep working too.
+- Locked out? Set `ADMIN_KEY` in Netlify (any secret): it always opens the page.
