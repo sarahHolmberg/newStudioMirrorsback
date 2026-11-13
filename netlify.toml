@@ -12,3 +12,11 @@
   from = "/study/bootstrap/*"
   to = "/study/"
   status = 301
+
+# Download link for the Grid Player: always the newest version (GitHub zips the main branch by itself).
+# 302 (temporary) on purpose: browsers do not remember it, so the target can be changed later.
+[[redirects]]
+  from = "/grid-player/forJeanLegbane"
+  to = "https://github.com/sarahHolmberg/gridPlayer/archive/refs/heads/main.zip"
+  status = 302
+  force = true
