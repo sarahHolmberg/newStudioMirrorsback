@@ -13,6 +13,10 @@ export const PAY_AMOUNT = 17000;
 export const PAY_FOR = 30;
 export const CURRENCY = 'XAF';
 export const payFor = (count) => Math.round((count * PAY_AMOUNT) / PAY_FOR);
+// CHANGE HERE: the pay for ADDING videos in Video Vault (counted per logged-in person). For now the same rate.
+export const ADD_PAY_AMOUNT = 17000;
+export const ADD_PAY_FOR = 30;
+export const addPayFor = (count) => Math.round((count * ADD_PAY_AMOUNT) / ADD_PAY_FOR);
 
 export const norm = (s) => (typeof s === 'string' ? s.trim().toUpperCase() : ''); // capitals and spaces do not matter
 

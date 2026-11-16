@@ -88,3 +88,14 @@ Open **/code-adder/** on the site (for example https://studio-mirrors.netlify.ap
   (their videos done stay).
 - The codes live in the database (table `people`). Codes in the Netlify setting `DONE_CODES` keep working too.
 - Locked out? Set `ADMIN_KEY` in Netlify (any secret): it always opens the page.
+
+## Video Vault login (who adds videos)
+
+- Only logged-in people can add videos in Video Vault; every new video is counted for the person who added it
+  (table `video_added`, kept when the link is Done). Video Vault shows "N videos added · pay" for whoever is logged in.
+- People log in with **their code** and the **password you set for them on the Code adder page** (at least 8 characters;
+  leave it empty when editing to keep it). The Code adder table shows each person's videos added and the pay for them.
+- Safe but small: passwords are stored only as scrypt hashes; a login is a signed HttpOnly, Secure cookie for 30 days;
+  wrong passwords are slowed down. The signing secret is made by itself (app_settings AUTH_SECRET): no Netlify setting.
+- The pay for adding is `ADD_PAY_AMOUNT` / `ADD_PAY_FOR` in `netlify/shared/people.mjs` (for now 17 000 XAF for 30).
+- Preview: log in with TEST or ANNA, password `testtest`.

@@ -146,3 +146,11 @@ body.vault { display: block; height: auto; padding: 12px; }
   .input-row { flex-wrap: wrap; }
   .input-row button { flex: 1 1 100%; }
 }
+/* Video Vault login (js/auth.js) */
+.vault .auth { margin: 0 0 10px; padding: 8px; border: 1px solid #a0a0a0; background: #f5f3ea; }
+.vault #loginForm p { margin: 0 0 6px; }
+.vault #loginForm input { flex: 1; min-width: 0; border: 2px inset #999; padding: 3px; }
+.vault #loginMsg { min-height: 1em; margin: 6px 0 0; }
+.vault #me { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.vault #meStats { font-weight: bold; color: #2e7d32; }
+.vault #logoutBtn { margin-left: auto; }

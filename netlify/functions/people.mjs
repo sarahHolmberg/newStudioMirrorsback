@@ -8,8 +8,9 @@
  *   - ADMIN_KEY (CHANGE IN NETLIFY, optional: a key that always works, e.g. if you lock yourself out).
  * While there is no admin at all (first use), the page may add ONE person, who becomes the admin.
  *   status                                   -> { setup: true/false }  (no key needed)
- *   list                                     -> { people: [{ code, name, deadline, isAdmin, done, pay }], payAmount, payFor, currency }
- *   save   { code, name, deadline, isAdmin } -> add, or change the person with that code
+ *   list                                     -> { people: [{ code, name, deadline, isAdmin, hasPassword, done, pay, added, addPay }], ... }
+ *   save   { code, name, deadline, isAdmin, password? } -> add, or change the person with that code
+ *                                            (password = their Video Vault login; empty keeps the old one)
  *   remove { code }                          -> remove the person (their videos done stay; the code stops working)
  *   setting { name: "INBOX_KEY", value }     -> save a setting (empty value = remove it). list says which are set.
  * -----------------------------------------------------------------------
@@ -17,7 +18,8 @@
 import crypto from 'node:crypto';
 import { getDatabase } from '@netlify/database';
 import { run, tables } from '../shared/tables.mjs';
-import { PAY_AMOUNT, PAY_FOR, CURRENCY, payFor, norm, findPerson, getSetting } from '../shared/people.mjs';
+import { PAY_AMOUNT, PAY_FOR, CURRENCY, payFor, addPayFor, norm, findPerson, getSetting } from '../shared/people.mjs';
+import { hashPassword } from '../shared/auth.mjs';
 
 const SETTINGS = ['INBOX_KEY']; // CHANGE HERE: the settings the page may save (the values are never sent back to the page)
 
@@ -56,9 +58,11 @@ export default async (req) => {
     if (body.action === 'list') {
       const people = await run(db.sql`
         SELECT p.code, p.name, to_char(p.deadline, 'YYYY-MM-DD') AS deadline, p.is_admin AS "isAdmin",
-               (SELECT count(*)::int FROM video_done d WHERE d.who = p.code) AS done
+               (p.password_hash IS NOT NULL) AS "hasPassword",
+               (SELECT count(*)::int FROM video_done d WHERE d.who = p.code) AS done,
+               (SELECT count(*)::int FROM video_added a WHERE a.who = p.code) AS added
         FROM people p ORDER BY p.created_at`);
-      people.forEach((p) => (p.pay = payFor(p.done)));
+      people.forEach((p) => { p.pay = payFor(p.done); p.addPay = addPayFor(p.added); });
       const settings = {};
       for (const n of SETTINGS) settings[n] = process.env[n] ? 'netlify' : (await getSetting(db, n)) ? 'page' : '';
       return reply({ people, payAmount: PAY_AMOUNT, payFor: PAY_FOR, currency: CURRENCY, settings });
@@ -72,9 +76,14 @@ export default async (req) => {
       const makeAdmin = setup || body.isAdmin === true; // the very first person is always the admin
       const before = await findPerson(db, code);
       if (before?.isAdmin && !makeAdmin && (await adminCount()) === 1) return reply({ error: 'This is the only admin: tick "admin" for someone else first.' }, 400);
+      // The Video Vault password: empty = keep the one they have; otherwise at least 8 characters, kept only as a hash
+      const password = typeof body.password === 'string' ? body.password : '';
+      if (password && password.length < 8) return reply({ error: 'The password: at least 8 characters.' }, 400);
+      const hash = password ? await hashPassword(password) : null;
       await run(db.sql`
-        INSERT INTO people (code, name, deadline, is_admin) VALUES (${code}, ${name}, ${deadline}, ${makeAdmin})
-        ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, deadline = EXCLUDED.deadline, is_admin = EXCLUDED.is_admin`);
+        INSERT INTO people (code, name, deadline, is_admin, password_hash) VALUES (${code}, ${name}, ${deadline}, ${makeAdmin}, ${hash})
+        ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, deadline = EXCLUDED.deadline, is_admin = EXCLUDED.is_admin,
+          password_hash = COALESCE(EXCLUDED.password_hash, people.password_hash)`);
       console.log('[PEOPLE] Saved', before ? '(changed)' : '(new)', 'admin:', makeAdmin);
       return reply({ saved: code, isNew: !before, setup });
     }

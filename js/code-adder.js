@@ -30,15 +30,18 @@ async function load() {
   $('payRule').textContent = `Pay: ${money(d.payAmount, d.currency)} for ${d.payFor} videos (about ${money(Math.round(d.payAmount / d.payFor), d.currency)} each)`;
   const body = $('people');
   body.textContent = '';
-  if (!d.people.length) { const tr = body.insertRow(); cell(tr, 'No one yet: add the first person above.').colSpan = 7; }
+  if (!d.people.length) { const tr = body.insertRow(); cell(tr, 'No one yet: add the first person above.').colSpan = 10; }
   const today = new Date().toISOString().slice(0, 10);
   d.people.forEach((p) => {
     const tr = body.insertRow();
     cell(tr, p.code, 'code');
     cell(tr, p.name || '—');
     cell(tr, p.deadline || '—', p.deadline && p.deadline < today ? 'past' : '');
+    cell(tr, String(p.added));
+    cell(tr, money(p.addPay, d.currency));
     cell(tr, String(p.done));
     cell(tr, money(p.pay, d.currency));
+    cell(tr, p.hasPassword ? '✔ password' : 'no password', p.hasPassword ? '' : 'past');
     cell(tr, p.isAdmin ? '✔' : '');
     const actions = cell(tr, '');
     const edit = document.createElement('button'); edit.textContent = 'Edit';
@@ -53,7 +56,8 @@ async function load() {
 }
 
 function fill(p) {
-  $('code').value = p ? p.code : ''; $('name').value = p ? p.name : ''; $('deadline').value = p?.deadline || '';
+  $('code').value = p ? p.code : ''; $('name').value = p ? p.name : ''; $('deadline').value = p?.deadline || ''; $('password').value = '';
+  $('password').placeholder = p?.hasPassword ? '(unchanged)' : 'set a password so they can log in';
   $('isAdmin').checked = setupMode || !!p?.isAdmin;
   $('formTitle').textContent = p ? `Change ${p.code}` : 'Add a person';
   (p ? $('name') : $('code')).focus();
@@ -78,7 +82,7 @@ $('personForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   $('saveBtn').disabled = true;
   try {
-    const r = await call('save', { code: $('code').value, name: $('name').value, deadline: $('deadline').value, isAdmin: $('isAdmin').checked });
+    const r = await call('save', { code: $('code').value, name: $('name').value, deadline: $('deadline').value, isAdmin: $('isAdmin').checked, password: $('password').value });
     if (r.setup) { // the first admin: from now on their code is the key
       adminKey = r.saved; $('keyInput').value = r.saved; setupMode = false;
       $('setupNote').classList.add('hidden'); $('isAdmin').disabled = false;

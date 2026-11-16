@@ -5,7 +5,8 @@
  *   GET    ?before=<id>            = next page of links, newest first
  *   GET    ?image=<id>             = the target picture of one link (JPEG): who the video is about
  *   GET    ?profile=<id>           = the profile picture of one link (JPEG)
- *   POST   { link, name, image, profile } = save a new link; all four are required (the pictures = JPEG, base64)
+ *   POST   { link, name, image, profile } = save a new link; all four are required (the pictures = JPEG, base64).
+ *                                  Only when logged in (session.mjs): the new video is counted for that person (video_added).
  *   DELETE { ids, code }           = remove clipped links; needs the scissors code
  * The scissors code is checked HERE (server side). The page never contains it.
  * Pictures are kept as base64 text in the DATABASE and are NOT sent with the
@@ -15,6 +16,8 @@
 import crypto from 'node:crypto';
 import { getDatabase } from '@netlify/database';
 import { run, tables } from '../shared/tables.mjs';
+import { findPerson } from '../shared/people.mjs';
+import { sessionCode } from '../shared/auth.mjs';
 
 // CHANGE HERE: how many links each "load" returns.
 const PAGE_SIZE = 5;
@@ -90,6 +93,10 @@ export default async (req) => {
     }
 
     if (req.method === 'POST') {
+      // Only a logged-in person (removed on the Code adder page = not any more) may add, so every video is counted for someone
+      const who = await sessionCode(db, req);
+      const person = who && (await findPerson(db, who));
+      if (!person) return Response.json({ error: 'Log in first: only logged-in people can add videos.' }, { status: 401 });
       const body = await req.json().catch(() => ({}));
       const link = cleanInstagramLink(body.link);
       if (!link) {
@@ -119,9 +126,10 @@ export default async (req) => {
           image = COALESCE(video_links.image, EXCLUDED.image),
           profile = COALESCE(video_links.profile, EXCLUDED.profile)
         WHERE (video_links.name = '' AND EXCLUDED.name <> '') OR video_links.image IS NULL OR video_links.profile IS NULL
-        RETURNING id`);
+        RETURNING id, (xmax = 0) AS inserted`); // inserted = a brand-new link (not an old one getting a missing picture)
       const added = rows.length > 0;
-      console.log('[LINKS DATABASE] Write done. Added:', added, '| has name:', !!name, '| picture chars:', image.length);
+      if (rows[0]?.inserted) await run(db.sql`INSERT INTO video_added (who, link, name) VALUES (${person.code}, ${link}, ${name})`);
+      console.log('[LINKS DATABASE] Write done. Added:', added, '| new:', !!rows[0]?.inserted, '| picture chars:', image.length);
       return Response.json({ added }, { status: added ? 201 : 200 });
     }
 

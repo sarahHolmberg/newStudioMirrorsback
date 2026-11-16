@@ -5,7 +5,9 @@
  * links-api.mjs = Grid Player), so they always agree:
  *   video_links : the Instagram links waiting (link, name, image = the target picture, profile = the profile picture)
  *   video_done  : one row per Done in the Grid Player (who, link, name, stored video link)
- *   people      : the codes (one per person), added on the Code adder page: name, deadline, admin (may open that page)
+ *   people      : the codes (one per person), added on the Code adder page: name, deadline, admin (may open that page),
+ *                 password_hash (scrypt) for logging in to Video Vault
+ *   video_added : one row per video added in Video Vault by a logged-in person (kept when the link is Done)
  *   app_settings: settings saved on the Code adder page (name, value), e.g. INBOX_KEY
  *   app_resets  : which one-time clears have already run (see RESET below)
  * Not a function itself: it is outside netlify/functions, and Netlify bundles it into the two that import it.
@@ -57,6 +59,16 @@ export function tables(db, tag) {
             is_admin BOOLEAN NOT NULL DEFAULT false,
             created_at TIMESTAMPTZ NOT NULL DEFAULT now()
           )`);
+        await run(db.sql`ALTER TABLE people ADD COLUMN IF NOT EXISTS password_hash TEXT`);
+        await run(db.sql`
+          CREATE TABLE IF NOT EXISTS video_added (
+            id SERIAL PRIMARY KEY,
+            who TEXT NOT NULL,
+            link TEXT NOT NULL,
+            name TEXT NOT NULL DEFAULT '',
+            added_at TIMESTAMPTZ NOT NULL DEFAULT now()
+          )`);
+        await run(db.sql`CREATE INDEX IF NOT EXISTS video_added_who ON video_added (who)`);
         await run(db.sql`CREATE TABLE IF NOT EXISTS app_settings (name TEXT PRIMARY KEY, value TEXT NOT NULL)`);
         await run(db.sql`
           CREATE TABLE IF NOT EXISTS app_resets (name TEXT PRIMARY KEY, done_at TIMESTAMPTZ NOT NULL DEFAULT now())`);

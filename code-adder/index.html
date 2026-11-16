@@ -36,6 +36,8 @@
               <input type="text" id="name" maxlength="100" autocomplete="off" placeholder="e.g. Jean Legbane" /></label>
             <label>Deadline <small>(optional: shown in red every time they finish a video)</small>
               <input type="date" id="deadline" /></label>
+            <label>Password <small>(for logging in to Video Vault: at least 8 characters; leave empty to keep their current one)</small>
+              <input type="text" id="password" maxlength="200" autocomplete="new-password" placeholder="(unchanged)" /></label>
             <label class="tick"><input type="checkbox" id="isAdmin" /> Admin <small>(their code also opens this page)</small></label>
             <div class="row">
               <button type="submit" id="saveBtn">Save</button>
@@ -48,7 +50,7 @@
         <p class="pay" id="payRule"></p>
         <div class="tablewrap">
           <table>
-            <thead><tr><th>Code</th><th>Name</th><th>Deadline</th><th>Videos done</th><th>Pay</th><th>Admin</th><th></th></tr></thead>
+            <thead><tr><th>Code</th><th>Name</th><th>Deadline</th><th>Videos added</th><th>Pay for adding</th><th>Videos done</th><th>Pay for done</th><th>Login</th><th>Admin</th><th></th></tr></thead>
             <tbody id="people"></tbody>
           </table>
         </div>

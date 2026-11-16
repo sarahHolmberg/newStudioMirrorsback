@@ -265,6 +265,7 @@ picForm.addEventListener('submit', async (e) => {
     linkInput.value = '';
     nameInput.value = '';
     setMsg(added ? 'Saved!' : 'That link was already saved.', false);
+    if (added) Auth2.refresh(); // your count and pay go up (auth.js)
     if (added && loaded) await loadPage(true); // refresh the open list so the new link shows on top
   } catch (err) {
     console.error('[ADD FAILED]', err);

@@ -32,6 +32,7 @@ const TEST_ENV = {
   DEADLINES: 'TEST=' + new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10), // a week from today
 };
 for (const [k, v] of Object.entries(TEST_ENV)) process.env[k] ??= v;
+const TEST_PASSWORD = 'testtest'; // CHANGE HERE: the Video Vault password of the test people TEST and ANNA
 
 register('./preview/hooks.mjs', import.meta.url); // "@netlify/database" -> the test database
 const { pg } = await import('./preview/database.mjs');
@@ -51,6 +52,12 @@ await FUNCTIONS['links-api'].modern(new Request('http://localhost/')); // makes 
 for (const [i, [link, name]] of LINKS.entries()) {
   await pg.query('INSERT INTO video_links (link, name, image, profile, created_at) VALUES ($1, $2, $3, $4, now() - $5 * interval \'1 hour\')',
     [link, name, PICTURES[i % PICTURES.length], PICTURES[(i + 1) % PICTURES.length], LINKS.length - i]);
+}
+// Two test people who can log in to Video Vault (TEST is also the admin of the Code adder page)
+const { hashPassword } = await import('../netlify/shared/auth.mjs');
+for (const [code, name, admin] of [['TEST', 'Test Person', true], ['ANNA', 'Anna Test', false]]) {
+  await pg.query('INSERT INTO people (code, name, is_admin, password_hash) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING',
+    [code, name, admin, await hashPassword(TEST_PASSWORD)]);
 }
 for (const [i, minutes] of [30, 18, 6].entries()) {
   await pg.query('INSERT INTO video_done (who, link, name, stored, done_at) VALUES ($1, $2, $3, $4, now() - interval \'1 day\' - $5 * interval \'1 minute\')',
@@ -111,6 +118,7 @@ http.createServer(async (req, res) => {
   console.log(`\nLocal preview with a TEST database (${LINKS.length} sample links). Nothing here touches the live site.`);
   console.log(`  Open:  ${cs || `http://localhost:${PORT}`}`);
   console.log(`  Codes: Done / Videos done = ${process.env.DONE_CODES} · scissors = ${process.env.SCISSORS_CODE} · dashboard login = ${process.env.VV_USERNAME} / ${process.env.VV_PASSWORD}`);
+  console.log(`  Video Vault login: TEST or ANNA, password ${TEST_PASSWORD} · Code adder admin key: TEST`);
   console.log(`  Functions: ${Object.keys(FUNCTIONS).join(', ')} · redirects from netlify.toml: ${REDIRECTS.length}`);
   console.log('  Ctrl+C stops it.\n');
 });
