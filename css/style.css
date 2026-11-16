@@ -149,8 +149,10 @@ body.vault { display: block; height: auto; padding: 12px; }
 /* Video Vault login (js/auth.js) */
 .vault .auth { margin: 0 0 10px; padding: 8px; border: 1px solid #a0a0a0; background: #f5f3ea; }
 .vault #loginForm p { margin: 0 0 6px; }
-.vault #loginForm input { flex: 1; min-width: 0; border: 2px inset #999; padding: 3px; }
-.vault #loginMsg { min-height: 1em; margin: 6px 0 0; }
+.vault #loginForm label { display: block; margin: 6px 0 2px; }
+.vault #loginForm input { display: block; width: 100%; box-sizing: border-box; border: 2px inset #999; padding: 4px; font-size: 16px; }
+.vault #loginMsg { min-height: 1em; margin: 6px 0; }
 .vault #me { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.vault #me.hidden { display: none; } /* logged out: no bar */
 .vault #meStats { font-weight: bold; color: #2e7d32; }
 .vault #logoutBtn { margin-left: auto; }

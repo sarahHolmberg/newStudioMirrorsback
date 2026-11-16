@@ -249,10 +249,15 @@ document.addEventListener('paste', (e) => {
 document.getElementById('picBack').addEventListener('click', () => (picStep === 3 ? showPicStep(2) : picDialog.close()));
 
 // Next (step 2) goes to the profile picture; Send (step 3): name + link + both pictures go to the server together, in one request
-picForm.addEventListener('submit', async (e) => {
+picForm.addEventListener('submit', (e) => {
   e.preventDefault();
   if (picStep === 2) { if (pics.target) showPicStep(3); return; }
   if (!pics.target || !pics.profile) return;
+  if (!Auth2.loggedIn()) return Auth2.ask(sendVideo); // not logged in: log in first, then it is sent (auth.js)
+  sendVideo();
+});
+
+async function sendVideo() {
   const link = linkInput.value.trim();
   const name = nameInput.value.trim();
   picSend.disabled = true; addBtn.disabled = true;
@@ -269,12 +274,13 @@ picForm.addEventListener('submit', async (e) => {
     if (added && loaded) await loadPage(true); // refresh the open list so the new link shows on top
   } catch (err) {
     console.error('[ADD FAILED]', err);
-    picMsg.textContent = err.message;
     picSend.disabled = false;
+    if (err.status === 401) { picMsg.textContent = ''; return Auth2.ask(sendVideo); } // the login ran out: log in again, then send
+    picMsg.textContent = err.message;
   } finally {
     addBtn.disabled = false;
   }
-});
+}
 
 // ---- VIEW VIDEOS (first click loads from the database, later clicks show/hide) ----
 viewBtn.addEventListener('click', async () => {

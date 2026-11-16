@@ -19,23 +19,14 @@
         </div>
       </div>
       <div class="window-body">
-        <!-- Login (js/auth.js): only logged-in people can add videos, and every video they add is counted for them -->
-        <form id="loginForm" class="auth hidden">
-          <p><strong>Log in to add videos</strong></p>
-          <div class="input-row">
-            <input type="text" id="loginCode" placeholder="Your code" autocomplete="username" autocapitalize="characters" />
-            <input type="password" id="loginPass" placeholder="Password" autocomplete="current-password" />
-            <button type="submit" id="loginBtn">Log in</button>
-          </div>
-          <p id="loginMsg" class="err" role="alert"></p>
-        </form>
+        <!-- Who is logged in (js/auth.js); the login itself is asked for at Send (loginDialog below) -->
         <div id="me" class="auth hidden">
           <span>👤 <b id="meName"></b></span>
           <span id="meStats"></span>
           <button type="button" id="logoutBtn">Log out</button>
         </div>
 
-        <div id="addArea" class="hidden">
+        <div id="addArea">
         <label for="nameInput">Name (who the video is about):</label>
         <input type="text" id="nameInput" maxlength="100" placeholder="e.g. Sarah" autocomplete="off" />
 
@@ -107,6 +98,21 @@
       <p id="picMsg" class="err" role="alert"></p>
       <button type="submit" id="picSend" disabled>Next ▸</button>
       <button type="button" id="picBack">Back</button>
+    </form>
+  </dialog>
+
+  <!-- Log in (js/auth.js): opens when someone presses Send and is not logged in; after it, the video is sent -->
+  <dialog id="loginDialog">
+    <form id="loginForm">
+      <p><strong>Log in to send this video</strong></p>
+      <p class="pic-hint">Your code and password. Every video you add is counted for you.</p>
+      <label for="loginCode">Code:</label>
+      <input type="text" id="loginCode" autocomplete="username" autocapitalize="characters" />
+      <label for="loginPass">Password:</label>
+      <input type="password" id="loginPass" autocomplete="current-password" />
+      <p id="loginMsg" class="err" role="alert"></p>
+      <button type="submit" id="loginBtn">Log in and send</button>
+      <button type="button" id="loginCancel">Cancel</button>
     </form>
   </dialog>
 
