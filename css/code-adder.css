@@ -27,3 +27,7 @@ body.codes { display: block; height: auto; min-height: 100vh; padding: 24px 12px
 .codes #inboxForm label { display: block; margin: 4px 0; }
 .codes #inboxForm input { display: block; width: 100%; margin-top: 2px; }
 .codes .small { font-size: 12px; color: #333; margin: 4px 0; }
+.codes td.dl { white-space: nowrap; }
+.codes td.dl input { border: 1px solid #7f9db9; padding: 2px; font: inherit; }
+.codes td.dl input.past { color: #c00; font-weight: bold; }
+.codes td.dl button { margin-left: 2px; padding: 0 5px; }

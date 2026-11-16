@@ -156,3 +156,13 @@ body.vault { display: block; height: auto; padding: 12px; }
 .vault #me.hidden { display: none; } /* logged out: no bar */
 .vault #meStats { font-weight: bold; color: #2e7d32; }
 .vault #logoutBtn { margin-left: auto; }
+
+/* The deadline after every video sent (js/app.js): red, can't be missed */
+.vault .deadline { display: flex; flex-direction: column; gap: 3px; margin: 6px 0 10px; padding: 10px 12px; text-align: center;
+                   border: 2px solid #b00000; background: #fff1f1; color: #8a0000; box-shadow: 0 0 0 3px #ffd6d6;
+                   animation: deadlinePulse 1.2s ease-in-out 2; }
+.vault .deadline.hidden { display: none; }
+.vault .deadline b { color: #b00000; font-size: 15px; letter-spacing: .03em; }
+.vault .deadline span { font-size: 12px; color: #5a0000; }
+.vault .deadline i { font-style: normal; font-weight: bold; font-size: 12px; }
+@keyframes deadlinePulse { 50% { box-shadow: 0 0 0 6px #ffb3b3; } }

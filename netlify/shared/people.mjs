@@ -20,6 +20,11 @@ export const addPayFor = (count) => Math.round((count * ADD_PAY_AMOUNT) / ADD_PA
 
 export const norm = (s) => (typeof s === 'string' ? s.trim().toUpperCase() : ''); // capitals and spaces do not matter
 
+// A person's deadline: the Netlify setting DEADLINES ("CODE=YYYY-MM-DD, ...") first, else the one on the Code adder page
+const ENV_DEADLINES = Object.fromEntries((process.env.DEADLINES || '').split(',').map((p) => p.split('=').map((x) => x.trim()))
+  .filter(([c, d]) => c && /^\d{4}-\d{2}-\d{2}$/.test(d || '')).map(([c, d]) => [c.toUpperCase(), d]));
+export const deadlineOf = (person) => (person ? ENV_DEADLINES[person.code] || person.deadline || null : null);
+
 /** A setting saved on the Code adder page (app_settings), or ''. */
 export async function getSetting(db, name) {
   const [row] = await run(db.sql`SELECT value FROM app_settings WHERE name = ${name}`);

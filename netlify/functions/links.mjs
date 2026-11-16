@@ -7,6 +7,7 @@
  *   GET    ?profile=<id>           = the profile picture of one link (JPEG)
  *   POST   { link, name, image, profile } = save a new link; all four are required (the pictures = JPEG, base64).
  *                                  Only when logged in (session.mjs): the new video is counted for that person (video_added).
+ *                                  -> { added, deadline? } (deadline = that person's, from the Code adder page or DEADLINES)
  *   DELETE { ids, code }           = remove clipped links; needs the scissors code
  * The scissors code is checked HERE (server side). The page never contains it.
  * Pictures are kept as base64 text in the DATABASE and are NOT sent with the
@@ -16,7 +17,7 @@
 import crypto from 'node:crypto';
 import { getDatabase } from '@netlify/database';
 import { run, tables } from '../shared/tables.mjs';
-import { findPerson } from '../shared/people.mjs';
+import { findPerson, deadlineOf } from '../shared/people.mjs';
 import { sessionCode } from '../shared/auth.mjs';
 
 // CHANGE HERE: how many links each "load" returns.
@@ -130,7 +131,8 @@ export default async (req) => {
       const added = rows.length > 0;
       if (rows[0]?.inserted) await run(db.sql`INSERT INTO video_added (who, link, name) VALUES (${person.code}, ${link}, ${name})`);
       console.log('[LINKS DATABASE] Write done. Added:', added, '| new:', !!rows[0]?.inserted, '| picture chars:', image.length);
-      return Response.json({ added }, { status: added ? 201 : 200 });
+      const deadline = deadlineOf(person); // shown in red under "Saved!" (js/app.js)
+      return Response.json(deadline ? { added, deadline } : { added }, { status: added ? 201 : 200 });
     }
 
     if (req.method === 'DELETE') {

@@ -18,7 +18,7 @@
 import crypto from 'node:crypto';
 import { getDatabase } from '@netlify/database';
 import { run, tables } from '../shared/tables.mjs';
-import { PAY_AMOUNT, PAY_FOR, CURRENCY, payFor, addPayFor, norm, findPerson, getSetting } from '../shared/people.mjs';
+import { PAY_AMOUNT, PAY_FOR, ADD_PAY_AMOUNT, ADD_PAY_FOR, CURRENCY, payFor, addPayFor, norm, findPerson, getSetting } from '../shared/people.mjs';
 import { hashPassword } from '../shared/auth.mjs';
 
 const SETTINGS = ['INBOX_KEY']; // CHANGE HERE: the settings the page may save (the values are never sent back to the page)
@@ -65,7 +65,7 @@ export default async (req) => {
       people.forEach((p) => { p.pay = payFor(p.done); p.addPay = addPayFor(p.added); });
       const settings = {};
       for (const n of SETTINGS) settings[n] = process.env[n] ? 'netlify' : (await getSetting(db, n)) ? 'page' : '';
-      return reply({ people, payAmount: PAY_AMOUNT, payFor: PAY_FOR, currency: CURRENCY, settings });
+      return reply({ people, payAmount: PAY_AMOUNT, payFor: PAY_FOR, addPayAmount: ADD_PAY_AMOUNT, addPayFor: ADD_PAY_FOR, currency: CURRENCY, settings });
     }
 
     if (body.action === 'save') {

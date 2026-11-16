@@ -27,7 +27,8 @@ const cell = (row, text, cls) => { const td = document.createElement('td'); td.t
 
 async function load() {
   const d = await call('list');
-  $('payRule').textContent = `Pay: ${money(d.payAmount, d.currency)} for ${d.payFor} videos (about ${money(Math.round(d.payAmount / d.payFor), d.currency)} each)`;
+  const each = (amount, n) => (n === 1 ? `${money(amount, d.currency)} a video` : `${money(amount, d.currency)} for ${n} videos`);
+  $('payRule').textContent = `Pay for adding: ${each(d.addPayAmount, d.addPayFor)} · Pay for done: ${each(d.payAmount, d.payFor)}`;
   const body = $('people');
   body.textContent = '';
   if (!d.people.length) { const tr = body.insertRow(); cell(tr, 'No one yet: add the first person above.').colSpan = 10; }
@@ -36,7 +37,7 @@ async function load() {
     const tr = body.insertRow();
     cell(tr, p.code, 'code');
     cell(tr, p.name || '—');
-    cell(tr, p.deadline || '—', p.deadline && p.deadline < today ? 'past' : '');
+    deadlineCell(cell(tr, '', 'dl'), p, today);
     cell(tr, String(p.added));
     cell(tr, money(p.addPay, d.currency));
     cell(tr, String(p.done));
@@ -53,6 +54,26 @@ async function load() {
   const s = d.settings?.INBOX_KEY;
   $('inboxState').textContent = s === 'netlify' ? 'Inbox key: set in Netlify (INBOX_KEY), that one is used.' : s === 'page' ? 'Inbox key: saved ✔' : 'Inbox key: not set yet: Send cannot reach the inbox.';
   console.log('[CODES] People:', d.people.length);
+}
+
+// The deadline right in the table: change the date = saved at once (✕ = no deadline). The rest of the person stays.
+function deadlineCell(td, p, today) {
+  const input = document.createElement('input');
+  input.type = 'date'; input.value = p.deadline || ''; input.title = `${p.code}'s deadline: change it and it is saved`;
+  input.classList.toggle('past', !!p.deadline && p.deadline < today);
+  const clear = document.createElement('button');
+  clear.type = 'button'; clear.textContent = '✕'; clear.title = 'No deadline'; clear.hidden = !p.deadline;
+  const save = async (value) => {
+    input.disabled = clear.disabled = true;
+    try {
+      await call('save', { code: p.code, name: p.name, deadline: value, isAdmin: p.isAdmin }); // no password = theirs stays
+      setMsg(value ? `${p.code}: deadline ${value} saved.` : `${p.code}: no deadline any more.`);
+      await load();
+    } catch (err) { setMsg(err.message, true); input.value = p.deadline || ''; input.disabled = clear.disabled = false; }
+  };
+  input.onchange = () => save(input.value);
+  clear.onclick = () => save('');
+  td.append(input, clear);
 }
 
 function fill(p) {

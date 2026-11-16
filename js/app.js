@@ -257,6 +257,22 @@ picForm.addEventListener('submit', (e) => {
   sendVideo();
 });
 
+// ---- The deadline under "Saved!": "⚠ DEADLINE: 13 NOVEMBER 2026 · All your videos must be completed by this date · 7 days left" ----
+function showDeadline(date) {
+  const box = document.getElementById('deadlineNote');
+  box.textContent = '';
+  box.classList.toggle('hidden', !date);
+  if (!date) return;
+  const d = new Date(date + 'T00:00:00'), today = new Date(new Date().toDateString());
+  const days = Math.round((d - today) / 864e5); // whole calendar days, from today
+  const head = document.createElement('b');
+  head.textContent = '⚠ DEADLINE: ' + d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
+  const what = document.createElement('span'); what.textContent = 'All your videos must be completed by this date.';
+  const left = document.createElement('i');
+  left.textContent = days > 1 ? `${days} days left.` : days === 1 ? '1 day left.' : days === 0 ? 'Today is the last day.' : 'This deadline has passed.';
+  box.append(head, what, left);
+}
+
 async function sendVideo() {
   const link = linkInput.value.trim();
   const name = nameInput.value.trim();
@@ -265,11 +281,12 @@ async function sendVideo() {
   try {
     const image = await toJpegBase64(pics.target), profile = await toJpegBase64(pics.profile);
     console.log('[ADD] Pictures shrunk. base64 chars:', image.length, '+', profile.length);
-    const { added } = await DB.addVideo(link, name, image, profile);
+    const { added, deadline } = await DB.addVideo(link, name, image, profile);
     picDialog.close();
     linkInput.value = '';
     nameInput.value = '';
     setMsg(added ? 'Saved!' : 'That link was already saved.', false);
+    showDeadline(deadline);
     if (added) Auth2.refresh(); // your count and pay go up (auth.js)
     if (added && loaded) await loadPage(true); // refresh the open list so the new link shows on top
   } catch (err) {
