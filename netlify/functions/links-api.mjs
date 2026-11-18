@@ -3,6 +3,7 @@
  * -----------------------------------------------------------------------
  * API for OTHER apps (e.g. the Grid Player) to read the links and mark one done.
  *   GET  (header X-Code: <code>) = { links: [{ id, name, link, createdAt, hasImage, hasProfile }], message?, needCode? }, newest first
+ *        ?limit=<n>              = at most n links (the oldest n, the ones worked on first): the Grid Player asks for 6
  *                                  (the pictures: GET /.netlify/functions/links?image=<id> / ?profile=<id>)
  *                                  message = a note for the app to show when the list is empty;
  *                                  needCode = the app should ask for the person's code and send it (see PACE below)
@@ -177,6 +178,9 @@ export default async (req) => {
         }
         room = Math.max(0, Math.min(MAX_ROWS, (await dailyNumber(who)) - (await doneToday(who))));
       }
+      // ?limit=6: only that many (less to read and to send); the pace can make it fewer still
+      const limit = Number(new URL(req.url).searchParams.get('limit'));
+      if (Number.isInteger(limit) && limit > 0) room = Math.min(room, limit);
       // The oldest links that fit (the ones worked on first), sent newest first like before
       const links = room ? await run(db.sql`
         SELECT * FROM (
