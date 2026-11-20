@@ -9,6 +9,7 @@
  *                 password_hash (scrypt) for logging in to Video Vault
  *   video_added : one row per video added in Video Vault by a logged-in person (kept when the link is Done)
  *   app_settings: settings saved on the Code adder page (name, value), e.g. INBOX_KEY
+ *   task_uploads, task_parts: a video being uploaded in pieces for the comic server (task.mjs); deleted once sent
  *   app_resets  : which one-time clears have already run (see RESET below)
  * Not a function itself: it is outside netlify/functions, and Netlify bundles it into the two that import it.
  * -----------------------------------------------------------------------
@@ -70,6 +71,22 @@ export function tables(db, tag) {
           )`);
         await run(db.sql`CREATE INDEX IF NOT EXISTS video_added_who ON video_added (who)`);
         await run(db.sql`CREATE TABLE IF NOT EXISTS app_settings (name TEXT PRIMARY KEY, value TEXT NOT NULL)`);
+        // A video on its way to the comic server (task.mjs): uploaded in pieces, deleted once the server has it
+        await run(db.sql`
+          CREATE TABLE IF NOT EXISTS task_uploads (
+            task_id TEXT PRIMARY KEY,
+            who TEXT NOT NULL,
+            size INTEGER NOT NULL,
+            parts INTEGER NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+          )`);
+        await run(db.sql`
+          CREATE TABLE IF NOT EXISTS task_parts (
+            task_id TEXT NOT NULL,
+            part INTEGER NOT NULL,
+            data TEXT NOT NULL,
+            PRIMARY KEY (task_id, part)
+          )`);
         await run(db.sql`
           CREATE TABLE IF NOT EXISTS app_resets (name TEXT PRIMARY KEY, done_at TIMESTAMPTZ NOT NULL DEFAULT now())`);
         if (RESET) {
