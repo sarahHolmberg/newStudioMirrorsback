@@ -23,7 +23,7 @@
 import crypto from 'node:crypto';
 import { getDatabase } from '@netlify/database';
 import { run, tables } from '../shared/tables.mjs';
-import { PAY_AMOUNT, PAY_FOR, CURRENCY, payFor, norm, findPerson } from '../shared/people.mjs';
+import { PAY_AMOUNT, PAY_FOR, CURRENCY, payFor, norm, findPerson, frozenSince, FROZEN_MESSAGE } from '../shared/people.mjs';
 
 // CHANGE HERE: most links one request can return (newest first).
 const MAX_ROWS = 500;
@@ -169,6 +169,8 @@ export default async (req) => {
     await clearDoneOnce();
 
     if (req.method === 'GET') {
+      // Freeze operations is on (Code adder page): nobody gets videos to do
+      if (await frozenSince(db)) { console.log('[API] Frozen: no links sent.'); return reply({ links: [], frozen: true, message: FROZEN_MESSAGE }); }
       let room = MAX_ROWS;
       if (PACE_ON) {
         const who = await whoFor(req.headers.get('x-code'));

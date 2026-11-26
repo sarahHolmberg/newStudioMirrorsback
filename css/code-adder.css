@@ -31,3 +31,10 @@ body.codes { display: block; height: auto; min-height: 100vh; padding: 24px 12px
 .codes td.dl input { border: 1px solid #7f9db9; padding: 2px; font: inherit; }
 .codes td.dl input.past { color: #c00; font-weight: bold; }
 .codes td.dl button { margin-left: 2px; padding: 0 5px; }
+
+/* Freeze operations */
+#freezeBox { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px; margin-bottom: 12px; border: 2px solid #7f9db9; border-radius: 4px; background: #eef4ff; }
+#freezeBox p { margin: 0; flex: 1; min-width: 200px; }
+#freezeBtn { font-weight: bold; min-height: 34px; padding: 4px 14px; }
+#freezeBox.frozen { border-color: #b3261e; background: #fdecea; }
+#freezeBox.frozen p { color: #b3261e; font-weight: bold; }

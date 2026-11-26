@@ -13,12 +13,14 @@
  *                                            (password = their Video Vault login; empty keeps the old one)
  *   remove { code }                          -> remove the person (their videos done stay; the code stops working)
  *   setting { name: "INBOX_KEY", value }     -> save a setting (empty value = remove it). list says which are set.
+ *   freeze { on: true/false }                -> Freeze operations: while on, the Grid Player gets no videos to do.
+ *                                               list says { frozen: '' or the moment it was switched on }
  * -----------------------------------------------------------------------
  */
 import crypto from 'node:crypto';
 import { getDatabase } from '@netlify/database';
 import { run, tables } from '../shared/tables.mjs';
-import { PAY_AMOUNT, PAY_FOR, ADD_PAY_AMOUNT, ADD_PAY_FOR, CURRENCY, payFor, addPayFor, norm, findPerson, getSetting } from '../shared/people.mjs';
+import { PAY_AMOUNT, PAY_FOR, ADD_PAY_AMOUNT, ADD_PAY_FOR, CURRENCY, payFor, addPayFor, norm, findPerson, getSetting, frozenSince } from '../shared/people.mjs';
 import { hashPassword } from '../shared/auth.mjs';
 
 const SETTINGS = ['INBOX_KEY']; // CHANGE HERE: the settings the page may save (the values are never sent back to the page)
@@ -65,7 +67,7 @@ export default async (req) => {
       people.forEach((p) => { p.pay = payFor(p.done); p.addPay = addPayFor(p.added); });
       const settings = {};
       for (const n of SETTINGS) settings[n] = process.env[n] ? 'netlify' : (await getSetting(db, n)) ? 'page' : '';
-      return reply({ people, payAmount: PAY_AMOUNT, payFor: PAY_FOR, addPayAmount: ADD_PAY_AMOUNT, addPayFor: ADD_PAY_FOR, currency: CURRENCY, settings });
+      return reply({ people, payAmount: PAY_AMOUNT, payFor: PAY_FOR, addPayAmount: ADD_PAY_AMOUNT, addPayFor: ADD_PAY_FOR, currency: CURRENCY, settings, frozen: await frozenSince(db) });
     }
 
     if (body.action === 'save') {
@@ -105,6 +107,14 @@ export default async (req) => {
       else await run(db.sql`DELETE FROM app_settings WHERE name = ${body.name}`);
       console.log('[PEOPLE] Setting', body.name, value ? 'saved' : 'removed');
       return reply({ setting: body.name, set: !!value });
+    }
+
+    if (body.action === 'freeze') {
+      if (setup) return reply({ error: 'Add the first admin first.' }, 400);
+      if (body.on === true) await run(db.sql`INSERT INTO app_settings (name, value) VALUES ('FROZEN', ${new Date().toISOString()}) ON CONFLICT (name) DO NOTHING`);
+      else await run(db.sql`DELETE FROM app_settings WHERE name = 'FROZEN'`);
+      console.warn('[PEOPLE] Operations', body.on === true ? 'FROZEN' : 'unfrozen');
+      return reply({ frozen: await frozenSince(db) });
     }
 
     return reply({ error: 'Unknown action.' }, 400);

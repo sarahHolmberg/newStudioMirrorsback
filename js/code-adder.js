@@ -51,6 +51,7 @@ async function load() {
     del.onclick = () => remove(p);
     actions.append(edit, del);
   });
+  showFreeze(d.frozen);
   const s = d.settings?.INBOX_KEY;
   $('inboxState').textContent = s === 'netlify' ? 'Inbox key: set in Netlify (INBOX_KEY), that one is used.' : s === 'page' ? 'Inbox key: saved ✔' : 'Inbox key: not set yet: Send cannot reach the inbox.';
   console.log('[CODES] People:', d.people.length);
@@ -123,6 +124,23 @@ async function saveInboxKey(value) {
 }
 $('inboxForm').addEventListener('submit', (e) => { e.preventDefault(); if ($('inboxKey').value.trim()) saveInboxKey($('inboxKey').value); });
 $('inboxClear').onclick = () => { if (confirm('Remove the inbox key? Send will stop reaching the inbox.')) saveInboxKey(''); };
+
+// 5. Freeze operations: on = the Grid Player gets no videos to do (Done and everything else keep working)
+let frozen = '';
+function showFreeze(since) {
+  frozen = since || '';
+  $('freezeBox').classList.toggle('frozen', !!frozen);
+  $('freezeBtn').textContent = frozen ? '▶ Unfreeze operations' : '❄ Freeze operations';
+  $('freezeState').textContent = frozen
+    ? `FROZEN since ${new Date(frozen).toLocaleString()}: nobody sees videos to do in the Grid Player.`
+    : 'Operations are running: people see their videos to do.';
+}
+$('freezeBtn').onclick = async () => {
+  $('freezeBtn').disabled = true;
+  try { const r = await call('freeze', { on: !frozen }); showFreeze(r.frozen); setMsg(r.frozen ? 'Operations frozen.' : 'Operations running again.'); }
+  catch (err) { setMsg(err.message, true); }
+  finally { $('freezeBtn').disabled = false; }
+};
 
 // First use: no admin yet -> the page opens without a key, and the first person becomes the admin
 (async () => {

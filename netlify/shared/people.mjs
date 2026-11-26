@@ -31,6 +31,11 @@ export async function getSetting(db, name) {
   return row?.value || '';
 }
 
+/** Freeze operations (the Code adder button): while it is on, the Grid Player gets no videos to do. '' = not frozen,
+ *  else the moment it was switched on (ISO date). */
+export const frozenSince = (db) => getSetting(db, 'FROZEN');
+export const FROZEN_MESSAGE = 'Work is paused for now: there are no videos to do. Check again later.'; // CHANGE HERE: what the Grid Player shows
+
 /** The person with this code, or null: { code, name, deadline ('YYYY-MM-DD' or null), isAdmin } */
 export async function findPerson(db, code) {
   const c = norm(code);
