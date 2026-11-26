@@ -84,3 +84,12 @@ body.study-page { height: auto; min-height: 100vh; align-items: flex-start; padd
 .truck-table th, .truck-table td { border: 1px solid #bbb; padding: 4px 6px; text-align: left; vertical-align: top; }
 .video-list { padding-left: 18px; }
 .video-list li { margin-bottom: 4px; }
+
+/* Menu line: dish cards and tables */
+.dish { padding: 6px 0; border-bottom: 1px dotted #bbb; }
+.dish-head { display: flex; justify-content: space-between; gap: 8px; }
+.dish-price { font-variant-numeric: tabular-nums; font-weight: bold; white-space: nowrap; }
+.dish-text { font-style: italic; }
+.dish-note { font-size: 12px; opacity: 0.8; }
+.menu-table { width: 100%; border-collapse: collapse; background: #fff; font-size: 12px; font-variant-numeric: tabular-nums; }
+.menu-table th, .menu-table td { border: 1px solid #bbb; padding: 4px 6px; text-align: left; vertical-align: top; }
