@@ -2,7 +2,7 @@
  * study.js
  * The /study page: a roadmap of info and quiz steps, plus a flashcard deck.
  * Content comes from STUDY_DATA: each study line has its own data file
- * (study-battle-data.js for Battle, study-truck-data.js for Truck). Flashcard scheduling from SRS (study-srs.js).
+ * (study-battle-data.js for Battle, study-truck-data.js for Truck, study-menu-data.js for Menu). Flashcard scheduling from SRS (study-srs.js).
  *
  * Roadmap: steps unlock one by one. An info step is done when you press
  * "I've read this", and if it has audio, only after REQUIRED_LISTENS listens.
@@ -24,7 +24,8 @@
   // CHANGE HERE: the study lines shown as tabs on the roadmap
   const LINES = [
     { id: 'battle', name: 'Battle', href: '/study/' },
-    { id: 'truck', name: 'Truck', href: '/study/truck/' }
+    { id: 'truck', name: 'Truck', href: '/study/truck/' },
+    { id: 'menu', name: 'Menu', href: '/study/menu/' }
   ];
 
   // The HTML line keeps its original key names so saved progress carries over
@@ -603,7 +604,7 @@
   }
 
   // ---------- offline ----------
-  const OFFLINE_CACHE = 'study-v5'; // same name as CACHE in /study/sw.js
+  const OFFLINE_CACHE = 'study-v6'; // same name as CACHE in /study/sw.js
   const audioUrls = [...new Set(steps.filter((s) => s.audio).map((s) => s.audio))];
   const codeUrls = STUDY_CODE_WORDS.map(codeUrl); // small; saved with every line so codes play offline
 
