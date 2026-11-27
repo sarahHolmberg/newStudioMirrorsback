@@ -2,7 +2,12 @@
  * netlify/functions/links-api.mjs
  * -----------------------------------------------------------------------
  * API for OTHER apps (e.g. the Grid Player) to read the links and mark one done.
- *   GET  (header X-Code: <code>) = { links: [{ id, name, link, createdAt, hasImage, hasProfile }], message?, needCode? }, newest first
+ *   GET  (header X-Code: <code>) = { links: [{ id, name, link, createdAt, hasImage, hasProfile, trimEnd }], message?, needCode? }, newest first
+ *                                  ONLY links already trimmed on the phone (trimEnd = where the video ends, in seconds)
+ *   GET  ?for=trim&limit=<n> (header X-Code, always needed) = the phone trimmer: { links: [{ id, name, link }] }, the oldest
+ *                                  links NOT trimmed yet (no pictures, no pace: as little to read as possible)
+ *   POST { action: "trim", code, id, trimEnd, firstBeat, bpm } = the phone trimmer saves where this video ends
+ *                                  -> { ok, id } (404 = the link is gone, 409 = someone already trimmed it)
  *        ?limit=<n>              = at most n links (the oldest n, the ones worked on first): the Grid Player asks for 6
  *                                  (the pictures: GET /.netlify/functions/links?image=<id> / ?profile=<id>)
  *                                  message = a note for the app to show when the list is empty;
@@ -171,6 +176,16 @@ export default async (req) => {
     if (req.method === 'GET') {
       // Freeze operations is on (Code adder page): nobody gets videos to do
       if (await frozenSince(db)) { console.log('[API] Frozen: no links sent.'); return reply({ links: [], frozen: true, message: FROZEN_MESSAGE }); }
+      const params = new URL(req.url).searchParams;
+      // ---- the phone trimmer: the oldest links not trimmed yet (a valid code is always needed) ----
+      if (params.get('for') === 'trim') {
+        const who = await whoFor(req.headers.get('x-code'));
+        if (!who) { if (req.headers.get('x-code')) await sleep(500); return reply({ links: [], needCode: true, message: req.headers.get('x-code') ? 'Wrong code. Type your code again.' : 'Type your code.' }, 403); }
+        const n = Math.min(Math.max(1, Number(params.get('limit')) || 6), 20);
+        const links = await run(db.sql`SELECT id, name, link FROM video_links WHERE trim_end IS NULL ORDER BY id LIMIT ${n}`);
+        console.log('[API DATABASE] Trimmer: sent', links.length, 'untrimmed links.');
+        return reply({ links });
+      }
       let room = MAX_ROWS;
       if (PACE_ON) {
         const who = await whoFor(req.headers.get('x-code'));
@@ -181,13 +196,13 @@ export default async (req) => {
         room = Math.max(0, Math.min(MAX_ROWS, (await dailyNumber(who)) - (await doneToday(who))));
       }
       // ?limit=6: only that many (less to read and to send); the pace can make it fewer still
-      const limit = Number(new URL(req.url).searchParams.get('limit'));
+      const limit = Number(params.get('limit'));
       if (Number.isInteger(limit) && limit > 0) room = Math.min(room, limit);
       // The oldest links that fit (the ones worked on first), sent newest first like before
       const links = room ? await run(db.sql`
         SELECT * FROM (
-          SELECT id, name, link, created_at AS "createdAt", (image IS NOT NULL) AS "hasImage", (profile IS NOT NULL) AS "hasProfile"
-          FROM video_links ORDER BY id LIMIT ${room}
+          SELECT id, name, link, created_at AS "createdAt", (image IS NOT NULL) AS "hasImage", (profile IS NOT NULL) AS "hasProfile", trim_end AS "trimEnd"
+          FROM video_links WHERE trim_end IS NOT NULL ORDER BY id LIMIT ${room}
         ) oldest ORDER BY id DESC`) : [];
       console.log('[API DATABASE] Sent', links.length, 'links (room:', room, ').');
       return reply(links.length || !PACE_ON ? { links } : { links, message: PAUSE_MESSAGE });
@@ -202,6 +217,19 @@ export default async (req) => {
         console.warn('[API] REFUSED: wrong code (code not logged).');
         await sleep(500); // slows down guessing
         return reply({ error: 'Wrong code.' }, 403);
+      }
+
+      // ---- the phone trimmer saves where the video ends (one write) ----
+      if (req.method === 'POST' && body.action === 'trim') {
+        const id = Number(body.id), trimEnd = Number(body.trimEnd), firstBeat = Number(body.firstBeat), bpm = Number(body.bpm);
+        if (!Number.isInteger(id) || id <= 0) return reply({ error: 'Which link? The id is missing.' }, 400);
+        if (!(trimEnd > 0 && trimEnd < 3600) || !(firstBeat >= 0 && firstBeat < trimEnd) || !(bpm > 0 && bpm < 1000)) return reply({ error: 'The trim numbers are not valid.' }, 400);
+        const rows = await run(db.sql`
+          UPDATE video_links SET trim_end = ${trimEnd}, first_beat = ${firstBeat}, bpm = ${bpm}, trimmed_by = ${who}
+          WHERE id = ${id} AND trim_end IS NULL RETURNING id`);
+        if (rows.length) { console.log('[API DATABASE] Trimmed by', who, ': link', id, 'ends at', trimEnd); return reply({ ok: true, id }); }
+        const [still] = await run(db.sql`SELECT id FROM video_links WHERE id = ${id}`);
+        return still ? reply({ error: 'Someone already trimmed this video.' }, 409) : reply({ error: 'This link is not on the list any more.' }, 404);
       }
 
       if (req.method === 'POST') {

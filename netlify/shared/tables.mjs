@@ -3,7 +3,8 @@
  * -----------------------------------------------------------------------
  * The DATABASE tables, made in ONE place for both functions (links.mjs = Video Vault,
  * links-api.mjs = Grid Player), so they always agree:
- *   video_links : the Instagram links waiting (link, name, image = the target picture, profile = the profile picture)
+ *   video_links : the Instagram links waiting (link, name, image = the target picture, profile = the profile picture,
+ *                 trim_end = where the video ends, set on the phone trimmer: first_beat + bpm -> bar 5 beat 3; trimmed_by = who)
  *   video_done  : one row per Done in the Grid Player (who, link, name, stored video link)
  *   people      : the codes (one per person), added on the Code adder page: name, deadline, admin (may open that page),
  *                 password_hash (scrypt) for logging in to Video Vault
@@ -42,6 +43,10 @@ export function tables(db, tag) {
         await run(db.sql`ALTER TABLE video_links ADD COLUMN IF NOT EXISTS name TEXT NOT NULL DEFAULT ''`);
         await run(db.sql`ALTER TABLE video_links ADD COLUMN IF NOT EXISTS image TEXT`);
         await run(db.sql`ALTER TABLE video_links ADD COLUMN IF NOT EXISTS profile TEXT`);
+        await run(db.sql`ALTER TABLE video_links ADD COLUMN IF NOT EXISTS trim_end REAL`);   // seconds; NULL = not trimmed yet
+        await run(db.sql`ALTER TABLE video_links ADD COLUMN IF NOT EXISTS first_beat REAL`);
+        await run(db.sql`ALTER TABLE video_links ADD COLUMN IF NOT EXISTS bpm REAL`);
+        await run(db.sql`ALTER TABLE video_links ADD COLUMN IF NOT EXISTS trimmed_by TEXT`);
         await run(db.sql`
           CREATE TABLE IF NOT EXISTS video_done (
             id SERIAL PRIMARY KEY,

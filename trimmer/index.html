@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Grid Trimmer Mobile</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one full screen at a time (no scrolling): a title bar, the screen's content, its button(s) at the bottom.
+   Deliberately one look (the Grid Player's Windows XP style), so no dark theme. */
+:root {
+  --desk: #ece9d8;      /* screen body */
+  --ink: #1b1b1b;
+  --muted: #5d5b52;
+  --line: #9c9a8c;
+  --title1: #0a5fe0; --title2: #0040b8;
+  --go: #2f8a22; --go-hi: #5ec84e;
+  --wave: #23407a; --wave-bg: #fbfaf5;
+  --beat1: #e8590c; --tick: #8a877a;
+  --lcd: #c9e6b8; --lcd-ink: #10300a;
+  --ui: Tahoma, Verdana, "Segoe UI", system-ui, sans-serif;
+  --mono: "Lucida Console", Consolas, ui-monospace, monospace;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; overflow: hidden; background: var(--desk); color: var(--ink); }
+body { margin: 0; font: 15px/1.35 var(--ui); overscroll-behavior: none; }
+
+.screen { position: fixed; inset: 0; display: flex; flex-direction: column; background: var(--desk); }
+.bar { display: flex; align-items: center; gap: 8px; padding: calc(8px + env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) 8px max(12px, env(safe-area-inset-left, 0px)); background: linear-gradient(var(--title1), var(--title2)); color: #fff; flex: none; }
+.bar h1 { margin: 0; font-size: 16px; flex: 1; text-shadow: 1px 1px #0006; }
+.bar .back { color: #fff; background: #fff2; border-color: #fff6; min-height: 32px; padding: 2px 10px; }
+.dots { display: flex; gap: 5px; }
+.dots i { width: 9px; height: 9px; border-radius: 50%; background: #fff4; }
+.dots i.on { background: #fff; }
+.mock { font-size: 10px; background: #ffd34d; color: #3a2a00; border-radius: 3px; padding: 1px 5px; font-weight: bold; }
+
+.main { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; padding: 12px max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px)); }
+.foot { flex: none; display: flex; flex-direction: column; gap: 8px; padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); border-top: 1px solid #fff; box-shadow: 0 -1px 0 var(--line); }
+.center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; }
+.say { font-size: 20px; font-weight: bold; margin: 0; text-wrap: balance; }
+.hint { font-size: 13px; color: var(--muted); margin: 0; text-align: center; text-wrap: balance; }
+
+button, .btn { font: inherit; color: var(--ink); min-height: 44px; padding: 6px 12px; border: 1px solid #003c74; border-radius: 4px; background: linear-gradient(#fff, #ecebe5 86%, #d8d0c4); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+button:active, .btn:active { background: #cdcac0; }
+button:disabled { color: #aca899; border-color: #c9c7ba; background: #f4f3ee; }
+button:focus-visible, .btn:focus-visible { outline: 2px solid #fcb83c; outline-offset: 1px; }
+.primary { color: #fff; font-weight: bold; border-color: #1d5b12; background: linear-gradient(var(--go-hi), #3c9a2e 60%, var(--go)); }
+.primary:active { background: var(--go); }
+.primary:disabled { color: #eef3ec; background: #a9bba5; border-color: #8a9c86; }
+.big { width: 100%; min-height: 42px; font-size: 15px; font-weight: bold; }
+.huge { width: 100%; min-height: 52px; font-size: 17px; font-weight: bold; }
+.row { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; }
+
+/* Download */
+.who img { width: 96px; height: 96px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 1px var(--line); object-fit: cover; }
+.who b { display: block; font-size: 24px; margin-top: 6px; }
+
+/* the video + its sound wave (moved into the screen that needs them) */
+.slot { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+#player { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+#stage { position: relative; flex: 1 1 0; min-height: 70px; background: #000; border-radius: 4px; overflow: hidden; }
+#v { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+#playOverlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border: 0; background: transparent; min-height: 0; padding: 0; }
+#playOverlay span { width: 64px; height: 64px; border-radius: 50%; background: #000a; color: #fff; font-size: 26px; display: flex; align-items: center; justify-content: center; border: 2px solid #fff8; }
+#playOverlay.playing span { opacity: 0; }
+#clock { position: absolute; left: 8px; top: 8px; font: bold 13px var(--mono); color: #fff; background: #0009; padding: 2px 6px; border-radius: 3px; pointer-events: none; }
+#beatLight { position: absolute; right: 10px; top: 10px; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #fff8; background: #fff2; pointer-events: none; }
+#beatLight.b { background: #fff; } #beatLight.b1 { background: var(--beat1); border-color: #fff; }
+#waveBox { position: relative; flex: 1.5 1 0; min-height: 150px; }
+#wave { position: absolute; inset: 0; display: block; width: 100%; height: 100%; border: 1px solid var(--line); border-radius: 4px; background: var(--wave-bg); touch-action: none; }
+.zoom { position: absolute; right: 4px; top: 4px; display: flex; gap: 4px; }
+.zoom button { min-height: 30px; min-width: 34px; padding: 0 6px; font-weight: bold; opacity: .92; }
+.tools { display: grid; grid-template-columns: 1fr 1fr 1.6fr 1fr 1fr; gap: 5px; flex: none; }
+.tools button { min-height: 40px; padding: 2px 3px; font-size: 13px; white-space: nowrap; gap: 3px; }
+@media (max-height: 700px) { .waveHint { display: none; } }
+#toBeat1 { font-weight: bold; color: var(--beat1); border-color: var(--beat1); }
+.waveHint { font-size: 11px; color: var(--muted); text-align: center; margin-top: -4px; }
+
+/* Tempo */
+.bpmShow { display: flex; align-items: baseline; justify-content: center; gap: 8px; }
+.bpmShow b { font: bold 30px var(--mono); background: var(--lcd); color: var(--lcd-ink); border: 2px inset #b5b2a3; padding: 2px 12px; border-radius: 3px; min-width: 130px; text-align: center; font-variant-numeric: tabular-nums; }
+/* the tap circle sits bottom right, where the right thumb rests */
+.tapFoot { flex-direction: row; align-items: flex-end; gap: 12px; }
+.tapLeft { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+#tapBtn { flex: none; width: 116px; height: 116px; min-height: 0; border-radius: 50%; padding: 0; flex-direction: column; gap: 0; font-size: 34px; color: #fff; font-weight: bold;
+  border: 3px solid #1d5b12; background: radial-gradient(circle at 35% 30%, var(--go-hi), #3c9a2e 55%, var(--go)); box-shadow: 0 3px 8px #0005, inset 0 -3px 6px #0003; }
+#tapBtn small { font-size: 13px; letter-spacing: .08em; }
+#tapBtn.hit { transform: scale(.94); background: var(--go); }
+.tapFoot .bpmShow b { font-size: 21px; min-width: 0; width: 100%; white-space: nowrap; padding: 2px 6px; }
+.tapFoot #sendBtn { white-space: nowrap; font-size: 14px; padding: 4px 6px; }
+.tapFoot .status { text-align: left; font-size: 13px; }
+.status { font-size: 14px; text-align: center; min-height: 19px; margin: 0; }
+.status.ok { color: #1e6b14; font-weight: bold; }
+
+.fit { font-size: 13px; font-weight: bold; text-align: left; margin: 0; min-height: 18px; }
+.fit.good { color: #1e6b14; } .fit.check { color: #b06500; } .fit.bad { color: #b3261e; }
+#codeIn { font: bold 22px var(--mono); text-align: center; text-transform: uppercase; width: 100%; max-width: 320px; min-height: 52px; border: 2px solid #7f9db9; border-radius: 4px; padding: 6px; }
+.err { color: #b3261e; font-weight: bold; font-size: 14px; margin: 0; min-height: 19px; }
+.howto { font-size: 13px; color: var(--muted); text-align: left; margin: 0; max-width: 360px; }
+.tip { font-size: 13px; background: #fffbe1; border: 1px solid #a89a4e; border-radius: 4px; padding: 8px 10px; max-width: 360px; text-align: left; margin: 0; }
+body.real .mock, body.real .mockOnly { display: none !important; }
+pre.json { margin: 0; font: 12px var(--mono); background: #fff; border: 1px solid var(--line); padding: 8px; overflow: auto; white-space: pre; text-align: left; max-height: 40vh; width: 100%; }
+#toast { position: fixed; left: 50%; top: calc(56px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); z-index: 30; background: #fffbe1; border: 1px solid #a89a4e; padding: 8px 12px; border-radius: 4px; box-shadow: 0 2px 6px #0004; font-size: 13px; max-width: calc(100% - 32px); }
+@media (max-height: 600px) { .huge { min-height: 46px; } .big { min-height: 38px; } #waveBox { min-height: 110px; } .bpmShow b { font-size: 22px; } }
+</style>
+</head>
+<body>
+
+<!-- 0. Your code (once: kept on this phone) -->
+<section class="screen" id="s-code" hidden>
+  <div class="bar"><h1>Your code</h1></div>
+  <div class="main"><div class="center">
+    <p class="say">Type your code</p>
+    <input id="codeIn" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Your code">
+    <p class="err" id="codeErr"></p>
+  </div></div>
+  <div class="foot"><button id="codeOk" class="primary huge">Continue ▸</button></div>
+</section>
+
+<!-- 1. Download -->
+<section class="screen" id="s-download">
+  <div class="bar"><h1>Download the video</h1><span class="mock">TEST</span><span class="dots"><i class="on"></i><i></i><i></i><i></i></span></div>
+  <div class="main"><div class="center">
+    <div class="who"><img id="whoPic" alt=""><b id="whoName">…</b></div>
+    <p class="hint" id="waiting"></p>
+  </div></div>
+  <div class="foot">
+    <div id="dlStep1"><a id="dlBtn" class="btn primary huge" target="_blank" rel="noopener">⬇ Download the video</a></div>
+    <div id="dlStep2" hidden style="display:flex;flex-direction:column;gap:8px">
+      <p class="say" style="text-align:center">Have you downloaded the video?</p>
+      <label id="dlYes" for="file" class="btn primary huge">Yes: pick it from my gallery</label><input type="file" id="file" accept="video/*" hidden>
+      <button id="dlAgain">Not yet: open the download again</button>
+    </div>
+  </div>
+</section>
+
+
+<!-- 3. First beat -->
+<section class="screen" id="s-beat" hidden>
+  <div class="bar"><button class="back" data-back="download">‹</button><h1>Find the first beat</h1><span class="dots"><i class="on"></i><i class="on"></i><i></i><i></i></span></div>
+  <div class="main"><div class="slot" id="slotBeat"></div></div>
+  <div class="foot">
+    <button id="setBeatBtn" class="primary huge">🥁 Set first beat</button>
+    <button id="beatDone" class="big" disabled>OK, beat 1 is done ▸</button>
+  </div>
+</section>
+
+<!-- 4. Tempo -->
+<section class="screen" id="s-tempo" hidden>
+  <div class="bar"><button class="back" data-back="beat">‹</button><h1>Now set the tempo</h1><span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span></div>
+  <div class="main"><div class="slot" id="slotTempo"></div></div>
+  <div class="foot tapFoot">
+    <div class="tapLeft">
+      <div class="bpmShow"><b id="bpmShow">– BPM</b></div>
+      <p class="status" id="tapStatus">Tap the circle on every beat.</p>
+      <p class="fit" id="fit"></p>
+      <button id="sendBtn" class="big" disabled>Check the ending ▸</button>
+    </div>
+    <button id="tapBtn" aria-label="Tap on every beat">👆<small>TAP</small></button>
+  </div>
+</section>
+
+<!-- 5. Check the ending -->
+<section class="screen" id="s-end" hidden>
+  <div class="bar"><button class="back" data-back="tempo">‹</button><h1>Check the ending</h1><span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span></div>
+  <div class="main"><div class="slot" id="slotEnd"></div></div>
+  <div class="foot">
+    <p class="status" id="endStatus">It stops where the video will end. Does it stop on the beat?</p>
+    <div class="row"><button id="fixBtn">✗ No: fix it</button><button id="againBtn">▶ Play again</button></div>
+    <button id="okBtn" class="primary huge">✔ It ends on the beat: send</button>
+  </div>
+</section>
+
+<!-- 6. Sent -->
+<section class="screen" id="s-sent" hidden>
+  <div class="bar"><h1>Sent</h1><span class="mock">TEST</span></div>
+  <div class="main"><div class="center">
+    <p class="say">✔ Sent for <span id="sentName"></span></p>
+    <p class="say" style="font-size:17px">Now delete the video from your gallery to save space.</p>
+    <p class="howto"><b>iPhone:</b> Photos → the video → 🗑 Delete.<br><b>Android:</b> Gallery → the video → 🗑 Delete.</p>
+    <p class="tip" id="delTip" hidden>Tip: deleted videos stay in <b>Recently deleted</b> for 30 days and still take space. Empty it now and then: Photos (or Gallery) → Albums → Recently deleted → Delete all.</p>
+    <pre class="json mockOnly" id="sentJson"></pre>
+  </div></div>
+  <div class="foot"><button id="nextBtn" class="primary huge">Next video ▸</button></div>
+</section>
+
+<!-- the player, moved into the beat or tempo screen -->
+<div id="player" hidden>
+  <div id="stage">
+    <video id="v" playsinline webkit-playsinline preload="auto"></video>
+    <button id="playOverlay" aria-label="Play or pause"><span>▶</span></button>
+    <div id="clock">0.000 s</div><div id="beatLight"></div>
+  </div>
+  <div id="waveBox">
+    <canvas id="wave" aria-label="Sound wave: drag it to move through the video"></canvas>
+    <div class="zoom"><button id="zoomOut" aria-label="Zoom out">−</button><button id="zoomIn" aria-label="Zoom in">+</button></div>
+  </div>
+  <div class="tools" id="tools">
+    <button data-d="-0.025" title="Beat 1: 25 ms earlier">◀◀ 25</button><button data-d="-0.005" title="Beat 1: 5 ms earlier">◀ 5</button>
+    <button id="toBeat1" title="Go back to beat 1">⟲ Beat 1</button>
+    <button data-d="0.005" title="Beat 1: 5 ms later">5 ▶</button><button data-d="0.025" title="Beat 1: 25 ms later">25 ▶▶</button>
+  </div>
+  <div class="waveHint" id="waveHint">Tap the video to play or pause. Drag the sound wave to move.</div>
+</div>
+
+<div id="toast" hidden></div>
+
+<script>
+// ===================================================================================================
+// Grid Trimmer Mobile: one screen at a time. Code (once) -> download -> first beat -> tempo -> check the ending -> send.
+// The video starts at its beginning and ENDS at bar 5, beat 3 (counted from beat 1 at the tempo). If that is after the end
+// of the video, the video simply ends where it ends. The video never leaves the phone: only the numbers are sent.
+// All times come from the sound in the FILE (not from when someone taps), so they are the same on every phone and computer.
+// On the Studio Mirrors website it uses the real list (links-api); anywhere else (a test link) pretend data.
+// Database use (website credits): one read for 6 links at a time, one write per video. Nothing runs on a timer.
+// ===================================================================================================
+const $ = (id) => document.getElementById(id);
+const END_BAR = 5, END_BEAT = 3, BEATS_IN_BAR = 4; // CHANGE HERE: where the video ends
+const END_BEATS = (END_BAR - 1) * BEATS_IN_BAR + (END_BEAT - 1); // beats from beat 1 to the end (18)
+const LINK_PREFIX = "https://f-d.app/";
+const REAL = /netlify\.app$/.test(location.hostname) || location.port === "8888"; // the website (or its local preview)
+if (REAL) document.body.classList.add("real");
+
+// a letter in a coloured circle instead of the profile picture (a picture would be one more read on the website)
+function pic(text, hue) {
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='hsl(${hue},65%,62%)'/><stop offset='1' stop-color='hsl(${(hue + 50) % 360},60%,32%)'/></linearGradient></defs><rect width='120' height='120' fill='url(#g)'/><text x='50%' y='62%' font-size='50' text-anchor='middle' fill='white' font-family='Tahoma,sans-serif' font-weight='bold'>${text}</text></svg>`;
+  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+}
+const store = { get: (k) => { try { return localStorage.getItem(k) || ""; } catch { return ""; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+
+// ---------- the list of links: the website, or pretend ----------
+const codeError = (msg) => Object.assign(new Error(msg), { needCode: true });
+const API = REAL ? (() => {
+  const URL_ = "/.netlify/functions/links-api";
+  let queue = []; // the batch of links not trimmed yet: asked for 6 at a time, used one by one
+  return {
+    async next() {
+      if (!queue.length) {
+        const res = await fetch(`${URL_}?for=trim&limit=6`, { headers: { "X-Code": store.get("trimCode") }, cache: "no-store" });
+        const data = await res.json().catch(() => ({}));
+        if (data.needCode) throw codeError(data.message || "Type your code.");
+        if (!res.ok) throw new Error(data.error || "The website had a problem. Try again.");
+        queue = data.links || [];
+        if (!queue.length) return { link: null, note: data.message || "No videos to trim right now 🎉" };
+      }
+      return { link: queue[0], waiting: queue.length };
+    },
+    async send(id, data) {
+      const res = await fetch(URL_, { method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store", body: JSON.stringify({ action: "trim", code: store.get("trimCode"), id, ...data }) });
+      const out = await res.json().catch(() => ({}));
+      if (res.status === 403) throw codeError("Wrong code. Type your code again.");
+      if (res.status === 404 || res.status === 409) { queue.shift(); throw Object.assign(new Error(out.error), { gone: true }); }
+      if (!res.ok) throw new Error(out.error || "The website had a problem. Try again.");
+      queue.shift();
+      return out;
+    },
+  };
+})() : (() => {
+  const names = [["Anna", "DQx1aA"], ["Ben Okafor", "DQx2bB"], ["Chloé", "DQx3cC"], ["Dmitri", "DQx4dD"], ["Esther N.", "DQx5eE"], ["Fatou", "DQx6fF"]];
+  const rows = names.map(([name, id], i) => ({ id: i + 1, name, link: `https://www.instagram.com/reel/${id}/`, sent: null }));
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  return {
+    async next() { await wait(200); const open = rows.filter((r) => !r.sent); return open.length ? { link: open[0], waiting: open.length } : { link: null, note: "No videos to trim right now 🎉" }; },
+    async send(id, data) { await wait(450); const r = rows.find((x) => x.id === id); r.sent = { ...data }; console.log("[pretend] saved", id, r.sent); return { ok: true, id, ...data }; },
+  };
+})();
+
+// ---------- state ----------
+const v = $("v");
+let current = null, firstBeat = null, bpm = null, objUrl = null, actx = null, screen = "download";
+const PEAKS_PER_S = 1000; // the sound per 1 ms: highest (peaks) / lowest (peakMin); zoomed in close, the raw sound is drawn
+let peaks = null, peakMin = null, raw = null, rawRate = 44100, onset = null; // onset = how sharply the sound rises, per 1 ms
+
+function toast(text, ms = 2200) { const t = $("toast"); t.textContent = text; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (t.hidden = true), ms); }
+const SLOTS = { beat: "slotBeat", tempo: "slotTempo", end: "slotEnd" };
+const HINTS = { beat: "Tap “Set first beat” near the first beat: it snaps to where the sound starts.", tempo: "The ticks are your beats: they should sit on the peaks of the wave.", end: "The green line is where the video ends." };
+function show(name) {
+  screen = name;
+  $("toast").hidden = true;
+  document.querySelectorAll(".screen").forEach((s) => (s.hidden = s.id !== "s-" + name));
+  if (SLOTS[name]) { $(SLOTS[name]).append($("player")); $("player").hidden = false; $("waveHint").textContent = HINTS[name]; }
+  else { v.pause(); $("player").hidden = true; }
+  $("tools").hidden = name === "end";
+}
+document.querySelectorAll("[data-back]").forEach((b) => (b.onclick = () => { show(b.dataset.back); if (b.dataset.back === "download" && current) { $("dlStep1").hidden = true; $("dlStep2").hidden = false; } }));
+
+// ---------- 0. Your code (only on the website; kept on this phone) ----------
+function askCode(msg) { show("code"); $("codeErr").textContent = msg || ""; $("codeIn").value = store.get("trimCode"); $("codeIn").focus(); }
+$("codeOk").onclick = () => {
+  const c = $("codeIn").value.trim().toUpperCase();
+  if (!c) { $("codeErr").textContent = "Type your code first."; return; }
+  store.set("trimCode", c); show("download"); loadNext();
+};
+$("codeIn").addEventListener("keydown", (e) => { if (e.key === "Enter") $("codeOk").click(); });
+
+// ---------- 1. Download ----------
+async function loadNext() {
+  $("whoName").textContent = "Loading…"; $("waiting").textContent = ""; $("dlStep1").hidden = false; $("dlStep2").hidden = true; $("dlBtn").hidden = true; $("whoPic").hidden = true;
+  let r;
+  try { r = await API.next(); }
+  catch (e) { if (e.needCode) return askCode(e.message); $("whoName").textContent = e.message; return; }
+  current = r.link;
+  if (!current) { $("whoName").textContent = r.note; return; }
+  $("whoPic").hidden = false; $("whoPic").src = pic(current.name.trim()[0]?.toUpperCase() || "?", (current.id * 55) % 360);
+  $("whoName").textContent = current.name;
+  $("dlBtn").hidden = false; $("dlBtn").href = LINK_PREFIX + current.link;
+  $("waiting").textContent = r.waiting > 1 ? `${r.waiting - 1}${r.waiting >= 6 ? "+" : ""} more waiting after this one` : "";
+}
+// After the tap the download site opens in another tab; back here, they are asked if it worked
+$("dlBtn").addEventListener("click", () => setTimeout(() => { $("dlStep1").hidden = true; $("dlStep2").hidden = false; }, 300));
+$("dlAgain").onclick = () => { $("dlStep1").hidden = false; $("dlStep2").hidden = true; };
+
+// ---------- the video, held on this phone only ----------
+$("file").onchange = () => { const f = $("file").files[0]; if (f) openVideo(f); };
+function openVideo(f) {
+  if (objUrl) URL.revokeObjectURL(objUrl);
+  objUrl = URL.createObjectURL(f);
+  v.src = objUrl; v.load();
+  firstBeat = null; bpm = null; peaks = peakMin = raw = onset = null; taps = [];
+  $("bpmShow").textContent = "– BPM"; $("tapStatus").textContent = "Tap the circle on every beat."; $("tapStatus").className = "status"; $("fit").textContent = "";
+  updateBeat(); updateTempo();
+  show("beat");
+  readWave(f);
+}
+// The sound, read from the file once: per 1 ms the highest and lowest value, and how sharply it rises (onset)
+async function readWave(f) {
+  try {
+    const buf = await f.arrayBuffer();
+    const Ctx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    const audio = await new Promise((ok, no) => { const p = new Ctx(1, 44100, 44100).decodeAudioData(buf, ok, no); if (p && p.catch) p.catch(no); });
+    const n0 = audio.length, ch = new Float32Array(n0);
+    for (let c = 0; c < audio.numberOfChannels; c++) { const d = audio.getChannelData(c); for (let j = 0; j < n0; j++) ch[j] += d[j] / audio.numberOfChannels; }
+    let max = 0; for (let j = 0; j < n0; j++) { const x = Math.abs(ch[j]); if (x > max) max = x; }
+    if (max > 0) for (let j = 0; j < n0; j++) ch[j] /= max;
+    const step = audio.sampleRate / PEAKS_PER_S, n = Math.ceil(n0 / step), hi = new Float32Array(n), lo = new Float32Array(n), amp = new Float32Array(n);
+    for (let i = 0; i < n; i++) { let h = 0, l = 0; const a = Math.floor(i * step), b = Math.min(n0, Math.floor((i + 1) * step)); for (let j = a; j < b; j++) { if (ch[j] > h) h = ch[j]; if (ch[j] < l) l = ch[j]; } hi[i] = h; lo[i] = l; amp[i] = Math.max(h, -l); }
+    // onset: the loudness of the next 5 ms minus the loudness of the 20 ms before (a sharp start = a big number)
+    const cum = new Float64Array(n + 1); for (let i = 0; i < n; i++) cum[i + 1] = cum[i] + amp[i];
+    const avg = (a, b) => { a = Math.max(0, a); b = Math.min(n, b); return b > a ? (cum[b] - cum[a]) / (b - a) : 0; };
+    const on = new Float32Array(n); for (let i = 0; i < n; i++) on[i] = Math.max(0, avg(i, i + 5) - avg(i - 25, i - 5));
+    raw = ch; rawRate = audio.sampleRate; peakMin = lo; peaks = hi; onset = on;
+  } catch (e) { console.warn("[wave] cannot read the sound:", e); peaks = "none"; }
+}
+const ms = (t) => Math.round(t * PEAKS_PER_S);
+function strongest(t, before, after) { // the sharpest start between t-before and t+after (seconds), or null
+  if (!onset) return null;
+  let best = -1, at = null;
+  for (let i = Math.max(0, ms(t - before)); i <= Math.min(onset.length - 1, ms(t + after)); i++) if (onset[i] > best) { best = onset[i]; at = i; }
+  return at == null ? null : { t: at / PEAKS_PER_S, s: best };
+}
+const near = (t, w = 0.02) => strongest(t, w, w)?.s || 0; // how sharp the sound is right around t
+
+// ---------- the player: tap to play/pause, drag the wave to move ----------
+function audioOn() { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); actx.resume(); } catch {} }
+$("playOverlay").onclick = () => { audioOn(); v.paused ? v.play() : v.pause(); };
+v.addEventListener("play", () => { $("playOverlay").classList.add("playing"); });
+v.addEventListener("pause", () => { $("playOverlay").classList.remove("playing"); });
+const cv = $("wave"), cx = cv.getContext("2d");
+const zoom = { beat: 0.5, tempo: 2.5, end: 2 }; // seconds shown each side of the playhead, per screen
+const span = () => zoom[screen] || 2.5;
+$("zoomIn").onclick = () => (zoom[screen] = Math.max(0.02, span() / 2));
+$("zoomOut").onclick = () => (zoom[screen] = Math.min(10, span() * 2));
+let drag = null;
+cv.addEventListener("pointerdown", (e) => { if (!v.duration) return; cv.setPointerCapture(e.pointerId); drag = { x: e.clientX, t: v.currentTime, w: cv.clientWidth, was: !v.paused }; v.pause(); });
+cv.addEventListener("pointermove", (e) => { if (!drag) return; v.currentTime = Math.min(v.duration, Math.max(0, drag.t - ((e.clientX - drag.x) / (drag.w / 2)) * span())); });
+["pointerup", "pointercancel"].forEach((ev) => cv.addEventListener(ev, () => { if (drag?.was) v.play(); drag = null; }));
+
+const endTime = () => (firstBeat != null && bpm ? Math.min(v.duration || Infinity, firstBeat + END_BEATS * (60 / bpm)) : null);
+function drawWave(t) {
+  const dpr = devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+  if (!W) return;
+  if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  cx.setTransform(dpr, 0, 0, dpr, 0, 0); cx.clearRect(0, 0, W, H);
+  const S = span(), x = (s) => W / 2 + ((s - t) / S) * (W / 2);
+  cx.font = "11px Tahoma, sans-serif"; cx.textAlign = "center";
+  const stepT = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5].find((st) => (st / S) * (W / 2) >= 9) || 5, labelEvery = [1, 2, 5, 10].find((m) => ((stepT * m) / S) * (W / 2) >= 52) || 10;
+  cx.fillStyle = getCss("--tick");
+  for (let i = Math.ceil((t - S) / stepT); i * stepT <= t + S; i++) {
+    const X = x(i * stepT), lab = i % labelEvery === 0;
+    cx.fillRect(X, H - (lab ? 9 : 4), 1, lab ? 9 : 4);
+    if (lab && i >= 0) cx.fillText((i * stepT).toFixed(stepT < 0.01 ? 3 : stepT < 0.1 ? 2 : 1), X, H - 11);
+  }
+  const wh = H - 24, wmid = 2 + wh / 2;
+  cx.fillRect(0, wmid, W, 1);
+  if (peaks instanceof Float32Array) {
+    cx.fillStyle = getCss("--wave");
+    const perPx = ((2 * S) / W) * rawRate;
+    for (let px = 0; px < W; px++) {
+      const t0 = t + ((px - W / 2) / (W / 2)) * S, t1 = t + ((px + 1 - W / 2) / (W / 2)) * S;
+      let hi = 0, lo = 0;
+      if (perPx < 400) { const a = Math.floor(t0 * rawRate), b = Math.max(a + 1, Math.floor(t1 * rawRate)); for (let i = Math.max(0, a); i < Math.min(raw.length, b); i++) { const s = raw[i]; if (s > hi) hi = s; if (s < lo) lo = s; } }
+      else { const a = Math.floor(t0 * PEAKS_PER_S), b = Math.max(a + 1, Math.floor(t1 * PEAKS_PER_S)); for (let i = Math.max(0, a); i < Math.min(peaks.length, b); i++) { if (peaks[i] > hi) hi = peaks[i]; if (peakMin[i] < lo) lo = peakMin[i]; } }
+      const top = wmid - hi * (wh / 2), bot = wmid - lo * (wh / 2);
+      cx.fillRect(px, top, 1, Math.max(1, bot - top));
+    }
+  } else { cx.fillStyle = getCss("--muted"); cx.fillText(peaks === "none" ? "This video's sound cannot be drawn: use your ears" : "Reading the sound…", W / 2, wmid - 6); }
+  if ((screen === "tempo" || screen === "end") && firstBeat != null && bpm) {
+    const spb = 60 / bpm, k0 = Math.max(0, Math.ceil((t - S - firstBeat) / spb)), k1 = Math.floor((t + S - firstBeat) / spb);
+    for (let k = k0; k <= k1; k++) { const X = x(firstBeat + k * spb), bar = k % BEATS_IN_BAR === 0; cx.fillStyle = bar ? getCss("--beat1") : getCss("--tick"); cx.fillRect(X - (bar ? 1 : 0.5), 0, bar ? 2 : 1.5, bar ? H - 12 : wh * 0.35); if (bar) { cx.textAlign = "left"; cx.fillText("bar " + (k / BEATS_IN_BAR + 1), X + 3, 11); } }
+    const e = endTime(); // the end: green line, everything after it greyed out
+    if (e != null && x(e) < W) { const X = Math.max(0, x(e)); cx.fillStyle = "#ffffffb0"; cx.fillRect(X, 0, W - X, H); cx.fillStyle = "#2f9e3a"; cx.fillRect(X - 2, 0, 4, H); cx.textAlign = "left"; cx.font = "bold 11px Tahoma, sans-serif"; cx.fillText("END", X + 5, 24); }
+  }
+  if (firstBeat != null && Math.abs(firstBeat - t) < S + 0.1) { const X = x(firstBeat); cx.fillStyle = getCss("--beat1"); cx.fillRect(X - 1.5, 0, 3, H); cx.textAlign = "left"; cx.font = "bold 11px Tahoma, sans-serif"; cx.fillText("beat 1", X + 4, 24); }
+  cx.fillStyle = "#003c74"; cx.fillRect(W / 2 - 1, 0, 2, H);
+}
+const cssCache = {}; function getCss(n) { return cssCache[n] || (cssCache[n] = getComputedStyle(document.documentElement).getPropertyValue(n).trim()); }
+
+// clicks + light on the beats while it plays (beat screen: beat 1 only)
+function click(accent) {
+  if (!actx) return;
+  const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime;
+  o.frequency.value = accent ? 1600 : 1000;
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(accent ? 0.6 : 0.35, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+  o.connect(g).connect(actx.destination); o.start(t); o.stop(t + 0.06);
+}
+function light(accent) { const l = $("beatLight"); l.className = accent ? "b1" : "b"; clearTimeout(light.t); light.t = setTimeout(() => (l.className = ""), 90); }
+let lastT = null;
+function frame() {
+  const t = v.currentTime || 0;
+  if (!v.paused && firstBeat != null && lastT != null && t > lastT && t - lastT < 0.5) {
+    if ((screen === "tempo" || screen === "end") && bpm) {
+      const spb = 60 / bpm, k0 = Math.max(0, Math.ceil((lastT - firstBeat) / spb - 1e-9)), k1 = Math.min(END_BEATS, Math.floor((t - firstBeat) / spb + 1e-9));
+      for (let k = k0; k <= k1; k++) if (firstBeat + k * spb > lastT) { click(k % BEATS_IN_BAR === 0); light(k % BEATS_IN_BAR === 0); }
+    } else if (screen === "beat" && firstBeat > lastT && firstBeat <= t) { click(true); light(true); }
+  }
+  if (screen === "end" && !v.paused) { const e = endTime(); if (e != null && t >= e) { v.pause(); v.currentTime = e; } } // stops where the cut is
+  lastT = t;
+  if (!$("player").hidden) { $("clock").textContent = t.toFixed(3) + " s"; drawWave(t); }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// ---------- 2. First beat: the tap is a rough guess; it snaps to the sharpest start of the sound near it ----------
+$("setBeatBtn").addEventListener("click", () => {
+  audioOn();
+  const tap = v.currentTime;
+  const snap = v.paused ? strongest(tap, 0.12, 0.12) : strongest(tap, 0.25, 0.08); // while playing, a tap is usually late
+  firstBeat = snap ? snap.t : Math.max(0, tap);
+  if (v.paused) v.currentTime = firstBeat;
+  click(true); light(true);
+  updateBeat();
+  toast(snap ? `Beat 1 snapped to the sound at ${firstBeat.toFixed(3)} s` : `Beat 1 at ${firstBeat.toFixed(3)} s`, 1800);
+});
+$("tools").onclick = (e) => {
+  const b = e.target.closest("button[data-d]"); if (!b || firstBeat == null) return;
+  firstBeat = Math.max(0, firstBeat + +b.dataset.d);
+  if (v.paused) v.currentTime = firstBeat;
+  updateBeat(); showFit();
+};
+function updateBeat() {
+  document.querySelectorAll("#tools button").forEach((b) => (b.disabled = firstBeat == null));
+  $("beatDone").disabled = firstBeat == null;
+  $("beatDone").className = firstBeat == null ? "big" : "big primary";
+  $("setBeatBtn").textContent = firstBeat == null ? "🥁 Set first beat" : "🥁 Set it again";
+}
+$("toBeat1").onclick = () => { if (firstBeat == null) return; v.pause(); v.currentTime = firstBeat; };
+$("beatDone").onclick = () => { v.pause(); v.currentTime = firstBeat; show("tempo"); };
+
+// ---------- 3. Tempo: the taps give a rough tempo; when they stop, it is fine-tuned to the music ----------
+// 1) within 6% of the tapped tempo, the one whose beats (from beat 1, up to 32 beats) land on the sharpest sounds;
+// 2) then exact: where each of those sharp sounds really is, and the tempo that fits all of them best (least squares).
+function fineTune(rough) {
+  if (!onset || firstBeat == null) return rough;
+  const dur = onset.length / PEAKS_PER_S;
+  let best = rough, bestScore = -1;
+  for (let b = rough * 0.94; b <= rough * 1.06; b += 0.02) {
+    const spb = 60 / b; let score = 0;
+    for (let k = 1; k <= 32 && firstBeat + k * spb < dur; k++) score += near(firstBeat + k * spb);
+    if (score > bestScore) { bestScore = score; best = b; }
+  }
+  const spb = 60 / best, hits = [];
+  for (let k = 1; k <= 32 && firstBeat + k * spb < dur; k++) { const h = strongest(firstBeat + k * spb, 0.025, 0.025); if (h && h.s > 0) hits.push([k, h]); }
+  const top = Math.max(0, ...hits.map(([, h]) => h.s));
+  let num = 0, den = 0;
+  for (const [k, h] of hits) if (h.s >= top * 0.3) { num += k * (h.t - firstBeat); den += k * k; } // only clear beats
+  const exact = den ? 60 / (num / den) : best;
+  return Math.round((Math.abs(exact - best) < best * 0.02 ? exact : best) * 100) / 100;
+}
+// How well the beats sit on the music, up to the end: how many of the beats have a clear sound right on them (a hint, never blocks)
+function showFit() {
+  if (!onset || firstBeat == null || !bpm) { $("fit").textContent = ""; return; }
+  const spb = 60 / bpm, end = Math.min(onset.length / PEAKS_PER_S, firstBeat + END_BEATS * spb);
+  let top = 0; for (let i = ms(firstBeat) - 30; i <= ms(end) + 30; i++) if (onset[i] > top) top = onset[i];
+  let hit = 0, n = 0;
+  for (let k = 0; k <= END_BEATS && firstBeat + k * spb <= end + 0.001; k++) { n++; if (near(firstBeat + k * spb, 0.03) >= top * 0.25) hit++; }
+  const share = n ? hit / n : 0;
+  const [cls, text] = share >= 0.75 ? ["good", "● The beats match the music"] : share >= 0.5 ? ["check", "● Check it: listen to the clicks"] : ["bad", "● The beats don't match: set beat 1 or tap again"];
+  $("fit").className = "fit " + cls; $("fit").textContent = text;
+}
+let taps = [], stopT = null;
+$("tapBtn").addEventListener("pointerdown", (e) => {
+  e.preventDefault(); audioOn();
+  if (v.paused) { v.currentTime = Math.max(0, firstBeat - 0.5); v.play(); $("tapStatus").textContent = "The music plays: now tap on every beat."; $("tapStatus").className = "status"; return; }
+  const now = performance.now();
+  if (taps.length && now - taps[taps.length - 1] > 2000) taps = [];
+  taps.push(now); if (taps.length > 16) taps.shift();
+  $("tapBtn").classList.add("hit"); setTimeout(() => $("tapBtn").classList.remove("hit"), 80);
+  clearTimeout(stopT);
+  if (taps.length < 4) { $("tapStatus").textContent = `${taps.length}… keep tapping`; $("tapStatus").className = "status"; return; }
+  const avg = (taps[taps.length - 1] - taps[0]) / (taps.length - 1);
+  const rough = (60000 / avg) * v.playbackRate;
+  bpm = Math.round(rough * 10) / 10; $("bpmShow").textContent = `${bpm} BPM`;
+  $("tapStatus").textContent = `${taps.length} taps. Happy with it? Stop tapping.`; $("tapStatus").className = "status";
+  updateTempo();
+  stopT = setTimeout(() => { // stopped tapping: kept, and fine-tuned to the music
+    bpm = fineTune(rough); $("bpmShow").textContent = `${bpm} BPM`;
+    $("tapStatus").textContent = onset ? "✔ Kept, and fine-tuned to the music. Tap again to redo it." : "✔ Kept. Tap again to redo it."; $("tapStatus").className = "status ok";
+    showFit(); updateTempo();
+  }, 1500);
+});
+function updateTempo() { $("sendBtn").disabled = !bpm; $("sendBtn").className = bpm ? "big primary" : "big"; }
+
+// ---------- 4. Check the ending: the last 3 seconds, with clicks, stopping exactly where the video will end ----------
+function playEnding() { const e = endTime(); if (e == null) return; audioOn(); v.currentTime = Math.max(0, e - 3); v.play(); }
+$("sendBtn").onclick = () => { if (!bpm || firstBeat == null) return; clearTimeout(stopT); show("end"); playEnding(); };
+$("againBtn").onclick = playEnding;
+$("fixBtn").onclick = () => { v.pause(); v.currentTime = firstBeat; show("beat"); };
+
+// ---------- 5. Send: only the numbers (one write on the website) ----------
+$("okBtn").onclick = async () => {
+  if (!bpm || firstBeat == null || !current) return;
+  v.pause();
+  const data = { trimEnd: +endTime().toFixed(3), firstBeat: +firstBeat.toFixed(3), bpm };
+  $("okBtn").disabled = true; $("okBtn").textContent = "Sending…";
+  try {
+    const r = await API.send(current.id, data);
+    $("sentName").textContent = current.name; $("sentJson").textContent = JSON.stringify(r, null, 2);
+    const n = +store.get("trimSent") + 1; store.set("trimSent", String(n));
+    $("delTip").hidden = n % 5 !== 0; // every 5th video: the "Recently deleted" tip
+    show("sent");
+  } catch (e) {
+    if (e.needCode) askCode(e.message);
+    else if (e.gone) { toast(e.message + " Next one…", 3000); clearVideo(); show("download"); loadNext(); }
+    else toast(e.message, 4000);
+  } finally { $("okBtn").disabled = false; $("okBtn").textContent = "✔ It ends on the beat: send"; }
+};
+function clearVideo() {
+  v.pause(); v.removeAttribute("src"); v.load();
+  if (objUrl) { URL.revokeObjectURL(objUrl); objUrl = null; }
+  $("file").value = ""; firstBeat = null; bpm = null; peaks = peakMin = raw = onset = null;
+}
+$("nextBtn").onclick = () => { clearVideo(); show("download"); loadNext(); };
+
+if (REAL && !store.get("trimCode")) askCode(); else loadNext();
+</script>
+</body>
+</html>
