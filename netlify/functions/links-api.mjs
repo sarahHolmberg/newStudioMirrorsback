@@ -224,9 +224,11 @@ export default async (req) => {
         const id = Number(body.id), trimEnd = Number(body.trimEnd), firstBeat = Number(body.firstBeat), bpm = Number(body.bpm);
         if (!Number.isInteger(id) || id <= 0) return reply({ error: 'Which link? The id is missing.' }, 400);
         if (!(trimEnd > 0 && trimEnd < 3600) || !(firstBeat >= 0 && firstBeat < trimEnd) || !(bpm > 0 && bpm < 1000)) return reply({ error: 'The trim numbers are not valid.' }, 400);
+        // ONE statement (one database trip): the trim goes on the link AND a row for the pay is written, or neither
         const rows = await run(db.sql`
-          UPDATE video_links SET trim_end = ${trimEnd}, first_beat = ${firstBeat}, bpm = ${bpm}, trimmed_by = ${who}
-          WHERE id = ${id} AND trim_end IS NULL RETURNING id`);
+          WITH t AS (UPDATE video_links SET trim_end = ${trimEnd}, first_beat = ${firstBeat}, bpm = ${bpm}, trimmed_by = ${who}
+                     WHERE id = ${id} AND trim_end IS NULL RETURNING link, name)
+          INSERT INTO video_trimmed (who, link, name) SELECT ${who}, link, name FROM t RETURNING id`);
         if (rows.length) { console.log('[API DATABASE] Trimmed by', who, ': link', id, 'ends at', trimEnd); return reply({ ok: true, id }); }
         const [still] = await run(db.sql`SELECT id FROM video_links WHERE id = ${id}`);
         return still ? reply({ error: 'Someone already trimmed this video.' }, 409) : reply({ error: 'This link is not on the list any more.' }, 404);

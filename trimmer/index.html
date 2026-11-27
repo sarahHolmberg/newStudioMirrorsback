@@ -100,6 +100,8 @@ button:focus-visible, .btn:focus-visible { outline: 2px solid #fcb83c; outline-o
 #codeIn { font: bold 22px var(--mono); text-align: center; text-transform: uppercase; width: 100%; max-width: 320px; min-height: 52px; border: 2px solid #7f9db9; border-radius: 4px; padding: 6px; }
 .err { color: #b3261e; font-weight: bold; font-size: 14px; margin: 0; min-height: 19px; }
 .howto { font-size: 13px; color: var(--muted); text-align: left; margin: 0; max-width: 360px; }
+.doneNote { background: #e7f6e3; border: 1px solid #7dbb6f; border-radius: 6px; padding: 10px 12px; max-width: 380px; text-align: left; display: flex; flex-direction: column; gap: 6px; }
+.doneNote p { margin: 0; font-size: 14px; }
 .tip { font-size: 13px; background: #fffbe1; border: 1px solid #a89a4e; border-radius: 4px; padding: 8px 10px; max-width: 360px; text-align: left; margin: 0; }
 body.real .mock, body.real .mockOnly { display: none !important; }
 pre.json { margin: 0; font: 12px var(--mono); background: #fff; border: 1px solid var(--line); padding: 8px; overflow: auto; white-space: pre; text-align: left; max-height: 40vh; width: 100%; }
@@ -124,6 +126,11 @@ pre.json { margin: 0; font: 12px var(--mono); background: #fff; border: 1px soli
 <section class="screen" id="s-download">
   <div class="bar"><h1>Download the video</h1><span class="mock">TEST</span><span class="dots"><i class="on"></i><i></i><i></i><i></i></span></div>
   <div class="main"><div class="center">
+    <div class="doneNote" id="doneNote" hidden>
+      <p><b>✔ Sent for <span id="sentName"></span>.</b> Now delete that video from your gallery to save space.</p>
+      <p class="howto"><b>iPhone:</b> Photos → the video → 🗑 Delete. <b>Android:</b> Gallery → the video → 🗑 Delete.</p>
+      <p class="howto" id="delTip" hidden>Tip: deleted videos stay in <b>Recently deleted</b> for 30 days. Empty it now and then: Albums → Recently deleted → Delete all.</p>
+    </div>
     <div class="who"><img id="whoPic" alt=""><b id="whoName">…</b></div>
     <p class="hint" id="waiting"></p>
   </div></div>
@@ -174,18 +181,6 @@ pre.json { margin: 0; font: 12px var(--mono); background: #fff; border: 1px soli
   </div>
 </section>
 
-<!-- 6. Sent -->
-<section class="screen" id="s-sent" hidden>
-  <div class="bar"><h1>Sent</h1><span class="mock">TEST</span></div>
-  <div class="main"><div class="center">
-    <p class="say">✔ Sent for <span id="sentName"></span></p>
-    <p class="say" style="font-size:17px">Now delete the video from your gallery to save space.</p>
-    <p class="howto"><b>iPhone:</b> Photos → the video → 🗑 Delete.<br><b>Android:</b> Gallery → the video → 🗑 Delete.</p>
-    <p class="tip" id="delTip" hidden>Tip: deleted videos stay in <b>Recently deleted</b> for 30 days and still take space. Empty it now and then: Photos (or Gallery) → Albums → Recently deleted → Delete all.</p>
-    <pre class="json mockOnly" id="sentJson"></pre>
-  </div></div>
-  <div class="foot"><button id="nextBtn" class="primary huge">Next video ▸</button></div>
-</section>
 
 <!-- the player, moved into the beat or tempo screen -->
 <div id="player" hidden>
@@ -310,7 +305,7 @@ async function loadNext() {
   $("waiting").textContent = r.waiting > 1 ? `${r.waiting - 1}${r.waiting >= 6 ? "+" : ""} more waiting after this one` : "";
 }
 // After the tap the download site opens in another tab; back here, they are asked if it worked
-$("dlBtn").addEventListener("click", () => setTimeout(() => { $("dlStep1").hidden = true; $("dlStep2").hidden = false; }, 300));
+$("dlBtn").addEventListener("click", () => setTimeout(() => { $("doneNote").hidden = true; $("dlStep1").hidden = true; $("dlStep2").hidden = false; }, 300));
 $("dlAgain").onclick = () => { $("dlStep1").hidden = false; $("dlStep2").hidden = true; };
 
 // ---------- the video, held on this phone only ----------
@@ -526,11 +521,12 @@ $("okBtn").onclick = async () => {
   const data = { trimEnd: +endTime().toFixed(3), firstBeat: +firstBeat.toFixed(3), bpm };
   $("okBtn").disabled = true; $("okBtn").textContent = "Sending…";
   try {
-    const r = await API.send(current.id, data);
-    $("sentName").textContent = current.name; $("sentJson").textContent = JSON.stringify(r, null, 2);
+    await API.send(current.id, data);
+    // straight back to the start with the next video; the reminder to delete this one sits on top
+    $("sentName").textContent = current.name; $("doneNote").hidden = false;
     const n = +store.get("trimSent") + 1; store.set("trimSent", String(n));
     $("delTip").hidden = n % 5 !== 0; // every 5th video: the "Recently deleted" tip
-    show("sent");
+    clearVideo(); show("download"); loadNext();
   } catch (e) {
     if (e.needCode) askCode(e.message);
     else if (e.gone) { toast(e.message + " Next one…", 3000); clearVideo(); show("download"); loadNext(); }
@@ -542,7 +538,6 @@ function clearVideo() {
   if (objUrl) { URL.revokeObjectURL(objUrl); objUrl = null; }
   $("file").value = ""; firstBeat = null; bpm = null; peaks = peakMin = raw = onset = null;
 }
-$("nextBtn").onclick = () => { clearVideo(); show("download"); loadNext(); };
 
 if (REAL && !store.get("trimCode")) askCode(); else loadNext();
 </script>

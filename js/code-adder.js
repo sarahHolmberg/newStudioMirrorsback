@@ -28,10 +28,10 @@ const cell = (row, text, cls) => { const td = document.createElement('td'); td.t
 async function load() {
   const d = await call('list');
   const each = (amount, n) => (n === 1 ? `${money(amount, d.currency)} a video` : `${money(amount, d.currency)} for ${n} videos`);
-  $('payRule').textContent = `Pay for adding: ${each(d.addPayAmount, d.addPayFor)} · Pay for done: ${each(d.payAmount, d.payFor)}`;
+  $('payRule').textContent = `Pay for adding: ${each(d.addPayAmount, d.addPayFor)} · Pay for trimming: ${each(d.trimPayAmount, d.trimPayFor)} · Pay for done: ${each(d.payAmount, d.payFor)}`;
   const body = $('people');
   body.textContent = '';
-  if (!d.people.length) { const tr = body.insertRow(); cell(tr, 'No one yet: add the first person above.').colSpan = 10; }
+  if (!d.people.length) { const tr = body.insertRow(); cell(tr, 'No one yet: add the first person above.').colSpan = 12; }
   const today = new Date().toISOString().slice(0, 10);
   d.people.forEach((p) => {
     const tr = body.insertRow();
@@ -40,6 +40,8 @@ async function load() {
     deadlineCell(cell(tr, '', 'dl'), p, today);
     cell(tr, String(p.added));
     cell(tr, money(p.addPay, d.currency));
+    cell(tr, String(p.trimmed));
+    cell(tr, money(p.trimPay, d.currency));
     cell(tr, String(p.done));
     cell(tr, money(p.pay, d.currency));
     cell(tr, p.hasPassword ? '✔ password' : 'no password', p.hasPassword ? '' : 'past');

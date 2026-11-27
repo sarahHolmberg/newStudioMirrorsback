@@ -17,6 +17,10 @@ export const payFor = (count) => Math.round((count * PAY_AMOUNT) / PAY_FOR);
 export const ADD_PAY_AMOUNT = 290;
 export const ADD_PAY_FOR = 1;
 export const addPayFor = (count) => Math.round((count * ADD_PAY_AMOUNT) / ADD_PAY_FOR);
+// CHANGE HERE: the pay for TRIMMING videos on the phone trimmer (/trimmer/): 180 XAF a video.
+export const TRIM_PAY_AMOUNT = 180;
+export const TRIM_PAY_FOR = 1;
+export const trimPayFor = (count) => Math.round((count * TRIM_PAY_AMOUNT) / TRIM_PAY_FOR);
 
 export const norm = (s) => (typeof s === 'string' ? s.trim().toUpperCase() : ''); // capitals and spaces do not matter
 

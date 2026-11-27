@@ -8,7 +8,7 @@
  *   - ADMIN_KEY (CHANGE IN NETLIFY, optional: a key that always works, e.g. if you lock yourself out).
  * While there is no admin at all (first use), the page may add ONE person, who becomes the admin.
  *   status                                   -> { setup: true/false }  (no key needed)
- *   list                                     -> { people: [{ code, name, deadline, isAdmin, hasPassword, done, pay, added, addPay }], ... }
+ *   list                                     -> { people: [{ code, name, deadline, isAdmin, hasPassword, done, pay, added, addPay, trimmed, trimPay }], ... }
  *   save   { code, name, deadline, isAdmin, password? } -> add, or change the person with that code
  *                                            (password = their Video Vault login; empty keeps the old one)
  *   remove { code }                          -> remove the person (their videos done stay; the code stops working)
@@ -20,7 +20,7 @@
 import crypto from 'node:crypto';
 import { getDatabase } from '@netlify/database';
 import { run, tables } from '../shared/tables.mjs';
-import { PAY_AMOUNT, PAY_FOR, ADD_PAY_AMOUNT, ADD_PAY_FOR, CURRENCY, payFor, addPayFor, norm, findPerson, getSetting, frozenSince } from '../shared/people.mjs';
+import { PAY_AMOUNT, PAY_FOR, ADD_PAY_AMOUNT, ADD_PAY_FOR, TRIM_PAY_AMOUNT, TRIM_PAY_FOR, CURRENCY, payFor, addPayFor, trimPayFor, norm, findPerson, getSetting, frozenSince } from '../shared/people.mjs';
 import { hashPassword } from '../shared/auth.mjs';
 
 const SETTINGS = ['INBOX_KEY']; // CHANGE HERE: the settings the page may save (the values are never sent back to the page)
@@ -62,12 +62,13 @@ export default async (req) => {
         SELECT p.code, p.name, to_char(p.deadline, 'YYYY-MM-DD') AS deadline, p.is_admin AS "isAdmin",
                (p.password_hash IS NOT NULL) AS "hasPassword",
                (SELECT count(*)::int FROM video_done d WHERE d.who = p.code) AS done,
-               (SELECT count(*)::int FROM video_added a WHERE a.who = p.code) AS added
+               (SELECT count(*)::int FROM video_added a WHERE a.who = p.code) AS added,
+               (SELECT count(*)::int FROM video_trimmed t WHERE t.who = p.code) AS trimmed
         FROM people p ORDER BY p.created_at`);
-      people.forEach((p) => { p.pay = payFor(p.done); p.addPay = addPayFor(p.added); });
+      people.forEach((p) => { p.pay = payFor(p.done); p.addPay = addPayFor(p.added); p.trimPay = trimPayFor(p.trimmed); });
       const settings = {};
       for (const n of SETTINGS) settings[n] = process.env[n] ? 'netlify' : (await getSetting(db, n)) ? 'page' : '';
-      return reply({ people, payAmount: PAY_AMOUNT, payFor: PAY_FOR, addPayAmount: ADD_PAY_AMOUNT, addPayFor: ADD_PAY_FOR, currency: CURRENCY, settings, frozen: await frozenSince(db) });
+      return reply({ people, payAmount: PAY_AMOUNT, payFor: PAY_FOR, addPayAmount: ADD_PAY_AMOUNT, addPayFor: ADD_PAY_FOR, trimPayAmount: TRIM_PAY_AMOUNT, trimPayFor: TRIM_PAY_FOR, currency: CURRENCY, settings, frozen: await frozenSince(db) });
     }
 
     if (body.action === 'save') {
